@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'package:speed_share/controllers/controllers.dart';
 import 'package:speed_share/modules/dialog/join_chat.dart';
 import 'package:speed_share/services/services.dart';
 import 'package:speed_share/themes/app_ui.dart';
@@ -18,26 +19,15 @@ class ConnectGuide extends StatefulWidget {
 }
 
 class _ConnectGuideState extends State<ConnectGuide> {
-  List<LanAddress> addresses = [];
-  int selected = 0;
-  bool loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    lanAddresses().then((value) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        addresses = value;
-        loaded = true;
-      });
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    return GetBuilder<LanAddressController>(
+      builder: (controller) => guide(controller),
+    );
+  }
+
+  Widget guide(LanAddressController controller) {
+    final List<LanAddress> addresses = controller.addresses;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
       child: Center(
@@ -59,12 +49,12 @@ class _ConnectGuideState extends State<ConnectGuide> {
               if (addresses.length > 1) ...[
                 UiAddressSelector(
                   addresses: addresses,
-                  selected: selected,
-                  onChanged: (i) => setState(() => selected = i),
+                  selected: controller.selectedIndex,
+                  onChanged: controller.select,
                 ),
                 const SizedBox(height: 16),
               ],
-              addressCards(),
+              addressCards(controller),
               const SizedBox(height: 16),
               appCard(),
               const SizedBox(height: 14),
@@ -76,14 +66,15 @@ class _ConnectGuideState extends State<ConnectGuide> {
     );
   }
 
-  Widget addressCards() {
-    if (!loaded) {
+  Widget addressCards(LanAddressController controller) {
+    final LanAddress? address = controller.selected;
+    if (!controller.loaded) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (addresses.isEmpty) {
+    if (address == null) {
       return const UiCard(
         radius: 16,
         padding: EdgeInsets.all(20),
@@ -93,7 +84,7 @@ class _ConnectGuideState extends State<ConnectGuide> {
         ),
       );
     }
-    final String url = addresses[selected].url(ChatService.port);
+    final String url = address.url(ChatService.port);
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 640) {

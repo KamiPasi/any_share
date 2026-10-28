@@ -36,8 +36,8 @@ class ChatController extends GetxController with WidgetsBindingObserver {
   // 储存已经发送过的消息
   // 在第一次连接到设备的时候，会将消息同步过去
   List<Map<String, dynamic>> messageCache = [];
-  // 给Web端用的
-  List<Map<String, dynamic>> messageWebCache = [];
+  // 给网页端用的，浏览器轮询 /message 从这里取
+  final WebMessageHub webHub = WebMessageHub();
   // 用来屏幕适配
   // for screen adaptation
   // TODO: Bad code!!!
@@ -55,6 +55,11 @@ class ChatController extends GetxController with WidgetsBindingObserver {
     ChatService.messageHandler = (data) {
       Log.i('handleMessage :$data');
       MessageBaseInfo info = MessageBaseInfo.resolveMessage(data);
+      // 浏览器发来的消息也记进网页端的消息里，刷新网页、换个浏览器都还能看到。
+      // 存原始数据，网页端用里面的 msgId 去重
+      if (info.deviceType == DeviceType.browser && info is! JoinMessage) {
+        webHub.add(data);
+      }
       handleMessage(info, messageItems);
     };
     if (GetPlatform.isWeb) {
@@ -96,13 +101,13 @@ class ChatController extends GetxController with WidgetsBindingObserver {
   // Notify web browser to start upload file
   // TODO: Test on v2.4
   Future<void> notifyBrowserUploadFile(String? hash) async {
-    List<String> addresses = await PlatformUtil.localAddress();
     final NotifyMessage notifyMessage = NotifyMessage(
       hash: hash,
-      addrs: addresses,
-      port: FileService.port,
+      addrs: deviceController.addrs,
+      // 浏览器把文件传到聊天服务的 /file_upload，端口要用聊天服务的，不是文件服务的
+      port: ChatService.port,
     );
-    messageWebCache.add(notifyMessage.toJson());
+    webHub.notify(notifyMessage.toJson());
   }
 
   // TODO: Reimplement this
@@ -128,7 +133,7 @@ class ChatController extends GetxController with WidgetsBindingObserver {
     info.deviceType = deviceController.deviceType;
     info.deviceId = deviceController.uniqueKey;
     messageCache.add(info.toJson());
-    messageWebCache.add(info.toJson());
+    webHub.add(info.toJson());
     deviceController.sendToAll(info.toJson());
   }
 
@@ -296,11 +301,15 @@ class ChatController extends GetxController with WidgetsBindingObserver {
       // 设备加入消息
       case JoinMessage:
         JoinMessage joinMessage = info as JoinMessage;
+        // 浏览器连不回去，它在不在线看它有没有来取消息（DeviceController.onBrowserPoll）
+        if (info.deviceType == DeviceType.browser) {
+          return;
+        }
         // 当连接设备不是本机的时候
         if (info.deviceId != deviceController.uniqueKey) {
           Log.i('current uniqueKey -> ${deviceController.uniqueKey}');
           // 这个不带端口，主要是为了筛选IP
-          String? urlPrefix = await getCorrectUrlWithAddressAndPort(joinMessage.addrs!, joinMessage.messagePort);
+          String? urlPrefix = await getCorrectUrlWithAddressAndPort(joinMessage.addrs ?? [], joinMessage.messagePort);
           Log.i('计算结果:$urlPrefix');
           if (urlPrefix == null) {
             return;
@@ -432,6 +441,7 @@ class ChatController extends GetxController with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         // 刷新本地ip列表
+        Get.find<LanAddressController>().refreshAddresses();
         deviceController.addrs = await DeviceController.localAddress();
         break;
       default:

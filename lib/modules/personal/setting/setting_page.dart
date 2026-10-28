@@ -51,18 +51,11 @@ class _SettingPageState extends State<SettingPage> {
   ChatController chatController = Get.find();
   String cacheSize = '';
   Directory? cache;
-  // 网页文件服务打开时，列出可以访问的地址
-  List<LanAddress> addresses = [];
 
   @override
   void initState() {
     super.initState();
     getp();
-    lanAddresses().then((value) {
-      if (mounted) {
-        setState(() => addresses = value);
-      }
-    });
   }
 
   Future<void> getp() async {
@@ -324,14 +317,23 @@ class _SettingPageState extends State<SettingPage> {
                   '已开启。同一局域网里的任何人打开下面的地址，都能浏览、下载和删除这台设备上的文件，用完记得关掉。',
                   style: TextStyle(fontSize: 13, color: AppUi.warningText, height: 1.5),
                 ),
-                for (final LanAddress address in addresses) ...[
-                  const SizedBox(height: 8),
-                  UiCopyField(
-                    text: '${address.url(ChatService.port)}/sdcard',
-                    filledButton: false,
-                    background: AppUi.surface,
-                  ),
-                ],
+                // 用二维码里选中的网卡地址
+                GetBuilder<LanAddressController>(
+                  builder: (lanAddressController) {
+                    final LanAddress? address = lanAddressController.selected;
+                    if (address == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: UiCopyField(
+                        text: '${address.url(ChatService.port)}/sdcard',
+                        filledButton: false,
+                        background: AppUi.surface,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

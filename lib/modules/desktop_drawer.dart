@@ -27,18 +27,6 @@ class DesktopDrawer extends StatefulWidget {
 }
 
 class _DesktopDrawerState extends State<DesktopDrawer> {
-  List<LanAddress> addresses = [];
-
-  @override
-  void initState() {
-    super.initState();
-    lanAddresses().then((value) {
-      if (mounted) {
-        setState(() => addresses = value);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width < 900 ? 228 : 260;
@@ -63,7 +51,9 @@ class _DesktopDrawerState extends State<DesktopDrawer> {
               const SizedBox(height: 20),
               Expanded(child: devices()),
               const SizedBox(height: 12),
-              thisDevice(),
+              GetBuilder<LanAddressController>(
+                builder: (controller) => thisDevice(controller.selected),
+              ),
             ],
           ),
         ),
@@ -235,8 +225,7 @@ class _DesktopDrawerState extends State<DesktopDrawer> {
     );
   }
 
-  Widget thisDevice() {
-    final LanAddress? address = addresses.isEmpty ? null : addresses.first;
+  Widget thisDevice(LanAddress? address) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

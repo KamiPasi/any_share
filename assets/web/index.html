@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light">
+<title>速享</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235b5bd6'/%3E%3Cpath fill='%23fff' transform='translate(4 4)' d='M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --accent: #5b5bd6;
+    --accent-soft: #efeffb;
+    --accent-soft-hover: #e5e5f8;
+    --accent-line: #cecef3;
+    --accent-text: #4444a1;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --subtle: #f1f2f5;
+    --segment: #e9ebef;
+    --field: #f6f7f9;
+    --border: #e5e7eb;
+    --border-strong: #d6d9df;
+    --text: #1f2328;
+    --text-2: #5b6270;
+    --text-muted: #3d4350;
+    --placeholder: #6b7280;
+    --online: #16a34a;
+    --online-text: #15803d;
+    --offline: #b8bdc6;
+    --danger: #c53030;
+    --warn-bg: #fff7e8;
+    --warn-border: #f3d9a4;
+    --warn-text: #7c4a03;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", Roboto, "Noto Sans CJK SC", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font: inherit; color: inherit; }
+  svg { display: block; fill: currentColor; }
+  [hidden] { display: none !important; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+  header {
+    flex: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+  .header-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .brand { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
+  .brand svg { width: 20px; height: 20px; }
+  .title { min-width: 0; flex: 1; }
+  .title h1 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.3; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); min-width: 0; }
+  .status span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--offline); flex: none; }
+  .dot.on { background: var(--online); }
+  .dot.err { background: var(--danger); }
+
+  .banner {
+    flex: none;
+    background: var(--warn-bg);
+    border-bottom: 1px solid var(--warn-border);
+    color: var(--warn-text);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 9px 16px;
+  }
+  .banner div { max-width: 760px; margin: 0 auto; }
+
+  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .list { max-width: 760px; margin: 0 auto; padding: 16px 12px 20px; display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
+
+  .empty {
+    margin: auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .empty-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--accent-soft); color: var(--accent-text); display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+  .empty-icon svg { width: 24px; height: 24px; }
+  .empty h2 { margin: 0 0 6px; font-size: 17px; font-weight: 600; }
+  .empty p { margin: 0 auto; max-width: 420px; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+  .empty .btn { margin-top: 16px; }
+
+  .row { display: flex; gap: 10px; align-items: flex-start; }
+  .row.mine { justify-content: flex-end; }
+  .avatar { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; margin-top: 21px; }
+  .avatar svg { width: 17px; height: 17px; }
+  .col { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; max-width: calc(100% - 42px); }
+  .row.mine .col { align-items: flex-end; max-width: 88%; }
+  .sender { font-size: 12px; color: var(--text-2); padding-left: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .line { display: flex; align-items: flex-end; gap: 4px; max-width: 100%; }
+  .bubble {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px 14px 14px 14px;
+    padding: 9px 13px;
+    min-width: 0;
+    max-width: 520px;
+  }
+  .mine .bubble { background: var(--accent-soft); border-color: var(--accent-line); border-radius: 14px 4px 14px 14px; }
+  .text { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-size: 15px; line-height: 1.55; }
+  .text a { color: var(--accent-text); }
+  .note { font-size: 12px; color: var(--text-2); }
+  .note.bad { color: var(--danger); cursor: pointer; }
+
+  .icon-btn {
+    width: 32px; height: 32px; flex: none;
+    border: none; border-radius: 9px; background: transparent; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .icon-btn svg { width: 17px; height: 17px; }
+
+  .file { width: 320px; max-width: 100%; padding: 12px; }
+  .file-head { display: flex; gap: 12px; align-items: center; }
+  .file-body { min-width: 0; flex: 1; }
+  .badge { width: 40px; height: 40px; border-radius: 10px; background: var(--subtle); display: flex; align-items: center; justify-content: center; flex: none; }
+  .mine .badge { background: var(--surface); }
+  .badge svg { width: 22px; height: 22px; }
+  .file-name { font-weight: 600; font-size: 14px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-all; }
+  .file-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .file-meta.ok { color: var(--online-text); }
+  .file-meta.bad { color: var(--danger); cursor: pointer; }
+  .progress { height: 4px; border-radius: 999px; background: var(--segment); overflow: hidden; margin-top: 10px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .preview { display: block; margin-bottom: 10px; border-radius: 10px; overflow: hidden; background: var(--subtle); }
+  .preview img { display: block; width: 100%; max-height: 260px; object-fit: cover; }
+  .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 9px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+    font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; white-space: nowrap;
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn.soft { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); }
+  .btn.filled { background: var(--accent); border-color: var(--accent); color: #fff; height: 40px; padding: 0 16px; font-size: 14px; }
+
+  .dir-toggle { margin-top: 8px; }
+  .dir-list { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 4px; max-height: 280px; overflow-y: auto; }
+  .dir-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px solid var(--subtle); }
+  .dir-item:last-child { border-bottom: none; }
+  .dir-item a { color: var(--accent-text); text-decoration: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dir-item span { color: var(--text-2); font-size: 12px; flex: none; }
+
+  .composer {
+    flex: none;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+  .composer-inner { max-width: 760px; margin: 0 auto; display: flex; align-items: flex-end; gap: 8px; }
+  .round { width: 42px; height: 42px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; flex: none; cursor: pointer; }
+  .round svg { width: 22px; height: 22px; }
+  .attach { background: var(--subtle); color: var(--text-muted); }
+  .send { background: var(--accent); color: #fff; }
+  .send svg { width: 20px; height: 20px; }
+  .send:disabled { background: var(--segment); color: var(--placeholder); cursor: default; }
+  textarea {
+    flex: 1; min-width: 0; height: 42px; max-height: 140px; resize: none;
+    border: 1px solid transparent; outline: none; border-radius: 21px;
+    background: var(--field); color: var(--text);
+    padding: 10px 16px; font: inherit; font-size: 15px; line-height: 20px;
+  }
+  textarea::placeholder { color: var(--placeholder); }
+  textarea:focus { border-color: var(--accent-line); background: var(--surface); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    background: rgba(31, 35, 40, .92); color: #fff;
+    padding: 8px 14px; border-radius: 999px; font-size: 13px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .drop { position: fixed; top: 0; right: 0; bottom: 0; left: 0; background: rgba(244, 245, 247, .88); display: none; align-items: center; justify-content: center; z-index: 20; padding: 24px; }
+  .drop.show { display: flex; }
+  .drop-card { border: 2px dashed var(--accent-line); background: var(--surface); border-radius: 20px; padding: 36px 48px; text-align: center; color: var(--accent-text); pointer-events: none; }
+  .drop-card svg { width: 32px; height: 32px; margin: 0 auto 10px; }
+  .drop-card b { display: block; font-size: 16px; color: var(--text); }
+
+  @media (min-width: 720px) {
+    header { padding-left: 24px; padding-right: 24px; }
+    .list { padding: 24px 20px 28px; }
+    .composer { padding-left: 20px; padding-right: 20px; }
+  }
+  @media (hover: hover) {
+    .btn:hover { background: var(--subtle); }
+    .btn.soft:hover { background: var(--accent-soft-hover); }
+    .btn.filled:hover { background: #5050c8; }
+    .icon-btn:hover { background: var(--subtle); color: var(--text); }
+    .attach:hover { background: var(--segment); }
+    .send:not(:disabled):hover { background: #5050c8; }
+    .dir-item a:hover { text-decoration: underline; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="header-inner">
+      <div class="brand" data-icon="share"></div>
+      <div class="title">
+        <h1>速享</h1>
+        <div class="status"><i class="dot" id="dot"></i><span id="status">正在连接…</span></div>
+      </div>
+    </div>
+  </header>
+  <div class="banner" id="banner" hidden><div id="banner-text"></div></div>
+  <main id="main">
+    <div class="list" id="list">
+      <section class="empty" id="empty">
+        <div class="empty-icon" data-icon="link"></div>
+        <h2 id="empty-title">正在连接…</h2>
+        <p id="empty-text">在这里发的文字和文件会出现在对方的速享里，对方发的也会显示在这里。</p>
+        <button class="btn filled" id="empty-send" type="button"><span data-icon="upload"></span>发送文件</button>
+      </section>
+    </div>
+  </main>
+  <div class="composer">
+    <div class="composer-inner">
+      <button class="round attach" id="attach" type="button" aria-label="发送文件" title="发送文件" data-icon="add"></button>
+      <textarea id="input" rows="1" placeholder="输入消息" aria-label="输入消息"></textarea>
+      <button class="round send" id="send" type="button" aria-label="发送" title="发送" data-icon="send" disabled></button>
+    </div>
+  </div>
+</div>
+<input type="file" id="picker" multiple hidden>
+<div class="drop" id="drop"><div class="drop-card"><span data-icon="upload"></span><b>松开发送</b>文件会传到对方的下载目录</div></div>
+<div class="toast" id="toast"></div>
+<noscript>网页版速享需要开启 JavaScript。</noscript>
+<script>
+(function () {
+  'use strict';
+
+  // Material Icons（Apache 2.0）
+  var ICONS = {
+    share: 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z',
+    link: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
+    add: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
+    send: 'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z',
+    copy: 'M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z',
+    download: 'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
+    upload: 'M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z',
+    open: 'M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z',
+    expand: 'M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z',
+    folder: 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z',
+    file: 'M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z',
+    image: 'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z',
+    video: 'M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z',
+    audio: 'M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z',
+    archive: 'M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z',
+    apk: 'M17.6 9.48l1.84-3.18c.16-.31.04-.69-.26-.85-.29-.15-.65-.06-.83.22l-1.88 3.24c-2.86-1.21-6.08-1.21-8.94 0L5.65 5.67c-.19-.29-.58-.38-.87-.2-.28.18-.37.54-.22.83L6.4 9.48C3.3 11.25 1.28 14.44 1 18h22c-.28-3.56-2.3-6.75-5.4-8.52zM7 15.25c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25zm10 0c-.69 0-1.25-.56-1.25-1.25s.56-1.25 1.25-1.25 1.25.56 1.25 1.25-.56 1.25-1.25 1.25z',
+    doc: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
+    desktop: 'M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-3v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H4V4h16v12z',
+    phone: 'M16 1H8C6.34 1 5 2.34 5 4v16c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 20h-4v-1h4v1zm3.25-3H6.75V4h10.5v14z',
+    globe: 'M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95c-.32-1.25-.78-2.45-1.38-3.56 1.84.63 3.37 1.91 4.33 3.56zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56-1.84-.63-3.37-1.9-4.33-3.56zm2.95-8H5.08c.96-1.66 2.49-2.93 4.33-3.56C8.81 5.55 8.35 6.75 8.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95c-.96 1.65-2.49 2.93-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z',
+    devices: 'M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z',
+    clip: 'M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z'
+  };
+
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function icon(name) {
+    var svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    var path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', ICONS[name] || ICONS.file);
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function $(id) { return document.getElementById(id); }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-icon]'), function (node) {
+    node.insertBefore(icon(node.getAttribute('data-icon')), node.firstChild);
+  });
+
+  // ---------- 工具 ----------
+
+  function storageGet(store, key) {
+    try { return window[store].getItem(key); } catch (e) { return null; }
+  }
+
+  function storageSet(store, key, value) {
+    try { window[store].setItem(key, value); } catch (e) { /* 隐私模式下可能存不了，不影响使用 */ }
+  }
+
+  function randomId(bytes) {
+    var array = new Uint8Array(bytes);
+    (window.crypto || window.msCrypto).getRandomValues(array);
+    return Array.prototype.map.call(array, function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('');
+  }
+
+  function formatBytes(bytes) {
+    if (!(bytes > 0)) return '0 B';
+    var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    var value = bytes / Math.pow(1024, i);
+    return (i === 0 ? value : value.toFixed(2)) + ' ' + units[i];
+  }
+
+  var encoder = new TextEncoder();
+
+  function base64Utf8(text) {
+    var bytes = encoder.encode(text);
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  // 和电脑端注册文件路由时的编码方式一致（Dart 的 Uri 路径段编码）
+  var PATH_SAFE = /^[A-Za-z0-9\-._~!$&'()*+,;=:@]$/;
+
+  function encodeSegment(segment) {
+    var out = '';
+    Array.from(segment).forEach(function (ch) {
+      if (PATH_SAFE.test(ch)) {
+        out += ch;
+        return;
+      }
+      encoder.encode(ch).forEach(function (b) {
+        out += '%' + (b < 16 ? '0' : '') + b.toString(16).toUpperCase();
+      });
+    });
+    return out;
+  }
+
+  // 对方的文件路径转成下载地址：反斜杠换成斜杠、去掉盘符，和电脑端注册路由时一样
+  function fileUrl(port, path) {
+    var p = String(path || '').replace(/\\/g, '/').replace(/^[A-Z]:/, '');
+    if (p.charAt(0) !== '/') p = '/' + p;
+    return location.protocol + '//' + location.hostname + ':' + port + p.split('/').map(encodeSegment).join('/');
+  }
+
+  function extension(name) {
+    var match = /\.([^./\\]+)$/.exec(String(name || '').toLowerCase());
+    return match ? match[1] : '';
+  }
+
+  var KINDS = {
+    image: { exts: 'jpg jpeg png gif webp bmp svg heic heif ico avif', color: '#2b6cb0' },
+    video: { exts: 'mp4 m4v mov mkv avi webm flv wmv rmvb mpg 3gp', color: '#6b46c1' },
+    audio: { exts: 'mp3 m4a aac wav flac ogg opus wma amr', color: '#b83280' },
+    archive: { exts: 'zip rar 7z tar gz tgz bz2 xz', color: '#c05621' },
+    apk: { exts: 'apk aab xapk apks', color: '#2f855a' },
+    doc: { exts: 'pdf doc docx xls xlsx ppt pptx txt md csv rtf epub', color: '#4c51bf' }
+  };
+
+  function kindOf(name) {
+    var ext = extension(name);
+    for (var kind in KINDS) {
+      if (ext && (' ' + KINDS[kind].exts + ' ').indexOf(' ' + ext + ' ') >= 0) return kind;
+    }
+    return 'file';
+  }
+
+  // 浏览器能直接打开看的文件
+  function canOpenInBrowser(name) {
+    var ext = extension(name);
+    return /^(jpg|jpeg|png|gif|webp|bmp|svg|avif|mp4|m4v|webm|mov|mp3|m4a|aac|wav|ogg|opus|flac|pdf|txt)$/.test(ext);
+  }
+
+  function canPreviewImage(name) {
+    return /^(jpg|jpeg|png|gif|webp|bmp|svg|avif)$/.test(extension(name));
+  }
+
+  function badge(name, kind) {
+    var node = el('div', 'badge');
+    var k = kind || kindOf(name);
+    node.style.color = k === 'folder' ? 'var(--accent)' : (KINDS[k] ? KINDS[k].color : 'var(--text-2)');
+    node.appendChild(icon(k === 'file' ? 'file' : k));
+    return node;
+  }
+
+  // 设备类型：新版传名字，旧版传数字（0 手机、1 电脑、2 浏览器）
+  function deviceStyle(type) {
+    if (type === 'android' || type === 0) return { icon: 'phone', color: '#c05621' };
+    if (type === 'ios') return { icon: 'phone', color: '#2c7a7b' };
+    if (type === 'windows' || type === 1) return { icon: 'desktop', color: '#2b6cb0' };
+    if (type === 'mac') return { icon: 'desktop', color: '#4c51bf' };
+    if (type === 'linux') return { icon: 'desktop', color: '#6b46c1' };
+    if (type === 'browser' || type === 2) return { icon: 'globe', color: '#b83280' };
+    return { icon: 'devices', color: '#2f855a' };
+  }
+
+  function hexAlpha(hex, alpha) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+  }
+
+  var toastTimer = 0;
+  function toast(text) {
+    var node = $('toast');
+    node.textContent = text;
+    node.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { node.classList.remove('show'); }, 1800);
+  }
+
+  // 网页是 http 打开的，navigator.clipboard 用不了，退回到 execCommand
+  function copyText(text) {
+    var done = function () { toast('已复制'); };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text) && done(); });
+      return;
+    }
+    if (legacyCopy(text)) done(); else toast('复制失败，请长按文字手动复制');
+  }
+
+  function legacyCopy(text) {
+    var area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    area.setSelectionRange(0, text.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(area);
+    return ok;
+  }
+
+  function linkify(container, text) {
+    var pattern = /https?:\/\/[^\s<>"'，。！？）]+/g;
+    var last = 0;
+    var match;
+    while ((match = pattern.exec(text))) {
+      if (match.index > last) container.appendChild(document.createTextNode(text.slice(last, match.index)));
+      var a = el('a', null, match[0]);
+      a.href = match[0];
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      container.appendChild(a);
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  // ---------- 本机身份 ----------
+
+  function guessName() {
+    var ua = navigator.userAgent;
+    var device = '浏览器';
+    if (/HarmonyOS|OpenHarmony/i.test(ua)) device = '鸿蒙设备';
+    else if (/iPhone/.test(ua)) device = 'iPhone';
+    else if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) device = 'iPad';
+    else if (/Android/.test(ua)) device = /Mobile/.test(ua) ? 'Android 手机' : 'Android 平板';
+    else if (/Windows/.test(ua)) device = 'Windows 电脑';
+    else if (/Macintosh|Mac OS X/.test(ua)) device = 'Mac';
+    else if (/CrOS/.test(ua)) device = 'Chromebook';
+    else if (/Linux/.test(ua)) device = 'Linux 电脑';
+    var browser = '';
+    if (/MicroMessenger/i.test(ua)) browser = '微信';
+    else if (/\bQQ\//i.test(ua)) browser = 'QQ';
+    else if (/DingTalk/i.test(ua)) browser = '钉钉';
+    else if (/Edg(e|A|iOS)?\//.test(ua)) browser = 'Edge';
+    else if (/MQQBrowser/i.test(ua)) browser = 'QQ 浏览器';
+    else if (/UCBrowser/i.test(ua)) browser = 'UC';
+    else if (/Quark/i.test(ua)) browser = '夸克';
+    else if (/HuaweiBrowser/i.test(ua)) browser = '华为浏览器';
+    else if (/MiuiBrowser|XiaoMi/i.test(ua)) browser = '小米浏览器';
+    else if (/SamsungBrowser/i.test(ua)) browser = 'Samsung';
+    else if (/Firefox|FxiOS/.test(ua)) browser = 'Firefox';
+    else if (/Chrome|CriOS/.test(ua)) browser = 'Chrome';
+    else if (/Safari/.test(ua)) browser = 'Safari';
+    return browser ? device + ' · ' + browser : device;
+  }
+
+  // deviceId 长期不变，用来认出哪些消息是自己发的；clientId 每个标签页一个，用来各自取消息
+  var me = {
+    id: storageGet('localStorage', 'speedshare.deviceId'),
+    client: storageGet('sessionStorage', 'speedshare.clientId'),
+    name: guessName()
+  };
+  if (!me.id) {
+    me.id = 'web-' + randomId(8);
+    storageSet('localStorage', 'speedshare.deviceId', me.id);
+  }
+  if (!me.client) {
+    me.client = 'tab-' + randomId(8);
+    storageSet('sessionStorage', 'speedshare.clientId', me.client);
+  }
+
+  var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+  // ---------- 和对方通信 ----------
+
+  var server = { name: '', type: '' };
+
+  function base(msgType) {
+    return {
+      msgType: msgType,
+      deviceName: me.name,
+      deviceId: me.id,
+      deviceType: 'browser',
+      msgId: randomId(8),
+      time: Date.now()
+    };
+  }
+
+  function post(message) {
+    return fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(message)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    });
+  }
+
+  function loadInfo() {
+    fetch('/info', { cache: 'no-store' }).then(function (res) {
+      return res.ok ? res.json() : null;
+    }).then(function (info) {
+      if (info && info.deviceName) {
+        server.name = info.deviceName;
+        server.type = info.deviceType;
+        renderStatus();
+      }
+    }).catch(function () {});
+  }
+
+  var poller = { timer: 0, failures: 0, reset: true, online: null, busy: false };
+
+  function poll() {
+    clearTimeout(poller.timer);
+    if (poller.busy) return;
+    poller.busy = true;
+    var query = 'id=' + encodeURIComponent(me.client) + '&name=' + encodeURIComponent(me.name) + '&batch=1' + (poller.reset ? '&reset=1' : '');
+    fetch('/message?' + query, { cache: 'no-store' }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (list) {
+      if (!Array.isArray(list)) throw new Error('bad response');
+      poller.busy = false;
+      poller.reset = false;
+      poller.failures = 0;
+      setOnline(true);
+      list.forEach(function (message) {
+        try { handleIncoming(message); } catch (e) { console.error(e); }
+      });
+      schedule(list.length ? 0 : (document.hidden ? 3000 : 700));
+    }).catch(function () {
+      poller.busy = false;
+      poller.failures++;
+      if (poller.failures >= 2) setOnline(false);
+      schedule(Math.min(1000 * poller.failures, 5000));
+    });
+  }
+
+  function schedule(delay) {
+    clearTimeout(poller.timer);
+    poller.timer = setTimeout(poll, delay);
+  }
+
+  function setOnline(online) {
+    if (poller.online === online) return;
+    var wasOffline = poller.online === false;
+    poller.online = online;
+    renderStatus();
+    if (online) {
+      if (!server.name) loadInfo();
+      if (wasOffline) {
+        // 对方可能重启过，没传完的文件重新排队
+        resumeUploads();
+      }
+    }
+  }
+
+  function serverName() {
+    return server.name || '对方';
+  }
+
+  function renderStatus() {
+    var dot = $('dot');
+    var status = $('status');
+    dot.className = 'dot' + (poller.online === true ? ' on' : poller.online === false ? ' err' : '');
+    if (poller.online === true) status.textContent = '已连接到 ' + serverName();
+    else if (poller.online === false) status.textContent = '连接中断，正在重试…';
+    else status.textContent = '正在连接…';
+    $('banner').hidden = poller.online !== false;
+    $('banner-text').textContent = '连不上' + (server.name ? ' ' + server.name + ' ' : '对方') + '了。确认对方的速享还开着、两台设备在同一个网络里，恢复后会自动重连。';
+    $('empty-title').textContent = poller.online === true ? '已连接到 ' + serverName() : (poller.online === false ? '暂时连不上' : '正在连接…');
+    document.title = server.name ? '速享 · ' + server.name : '速享';
+  }
+
+  // ---------- 消息列表 ----------
+
+  var list = $('list');
+  var main = $('main');
+  var seen = {};
+  var dirs = {};
+
+  function nearBottom() {
+    return main.scrollHeight - main.scrollTop - main.clientHeight < 120;
+  }
+
+  function scrollToBottom() {
+    main.scrollTop = main.scrollHeight;
+  }
+
+  // 用户停在最底下时，新消息、图片加载完都跟着滚到底；往上翻着看的时候不打扰
+  var stick = true;
+  main.addEventListener('scroll', function () {
+    stick = nearBottom();
+  });
+
+  function contentChanged(force) {
+    if (force || stick) scrollToBottom();
+  }
+
+  function clearMessages() {
+    Array.prototype.slice.call(list.children).forEach(function (child) {
+      if (child.id !== 'empty') list.removeChild(child);
+    });
+    dirs = {};
+    $('empty').hidden = false;
+  }
+
+  function addRow(message, mine, label) {
+    $('empty').hidden = true;
+    var row = el('div', 'row' + (mine ? ' mine' : ''));
+    var col = el('div', 'col');
+    if (!mine) {
+      var style = deviceStyle(message.deviceType);
+      var avatar = el('div', 'avatar');
+      avatar.style.color = style.color;
+      avatar.style.background = hexAlpha(style.color, 0.12);
+      avatar.appendChild(icon(style.icon));
+      row.appendChild(avatar);
+      col.appendChild(el('div', 'sender', label || message.deviceName || serverName()));
+    }
+    row.appendChild(col);
+    list.appendChild(row);
+    contentChanged(mine);
+    return col;
+  }
+
+  function renderText(message, mine, label) {
+    var col = addRow(message, mine, label);
+    var line = el('div', 'line');
+    var bubble = el('div', 'bubble');
+    var text = el('div', 'text');
+    linkify(text, String(message.content == null ? '' : message.content));
+    bubble.appendChild(text);
+    line.appendChild(bubble);
+    if (!mine) {
+      var copy = el('button', 'icon-btn');
+      copy.type = 'button';
+      copy.title = '复制';
+      copy.setAttribute('aria-label', '复制');
+      copy.appendChild(icon('copy'));
+      copy.addEventListener('click', function () { copyText(String(message.content || '')); });
+      line.appendChild(copy);
+    }
+    col.appendChild(line);
+    return col;
+  }
+
+  function fileCard(col, name, kind) {
+    var bubble = el('div', 'bubble file');
+    var head = el('div', 'file-head');
+    head.appendChild(badge(name, kind));
+    var body = el('div', 'file-body');
+    body.appendChild(el('div', 'file-name', name));
+    var meta = el('div', 'file-meta');
+    body.appendChild(meta);
+    head.appendChild(body);
+    bubble.appendChild(head);
+    col.appendChild(bubble);
+    return { bubble: bubble, meta: meta };
+  }
+
+  function linkButton(href, iconName, text, soft, download) {
+    var a = el('a', 'btn' + (soft ? ' soft' : ''));
+    a.href = href;
+    if (download) a.setAttribute('download', '');
+    else {
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+    a.appendChild(icon(iconName));
+    a.appendChild(document.createTextNode(text));
+    return a;
+  }
+
+  // 对方发来的文件
+  function renderFile(message, mine) {
+    var col = addRow(message, mine);
+    var name = message.fileName || '文件';
+    var url = fileUrl(message.port, message.filePath);
+    var card = fileCard(col, name);
+    card.meta.textContent = message.fileSize || '';
+    if (canPreviewImage(name)) {
+      var preview = el('a', 'preview');
+      preview.href = url;
+      preview.target = '_blank';
+      preview.rel = 'noopener';
+      var img = el('img');
+      img.alt = name;
+      img.loading = 'lazy';
+      img.addEventListener('load', function () { contentChanged(false); });
+      img.addEventListener('error', function () { preview.hidden = true; });
+      img.src = url;
+      preview.appendChild(img);
+      card.bubble.insertBefore(preview, card.bubble.firstChild);
+    }
+    var actions = el('div', 'actions');
+    actions.appendChild(linkButton(url + '?download=1', 'download', '下载', true, true));
+    if (canOpenInBrowser(name)) actions.appendChild(linkButton(url, 'open', '打开', false, false));
+    card.bubble.appendChild(actions);
+  }
+
+  // 对方发来的文件夹：先来一条文件夹消息，后面每个文件各来一条 dirPart
+  function renderDir(message, mine) {
+    var col = addRow(message, mine);
+    var name = message.dirName || '文件夹';
+    var card = fileCard(col, name, 'folder');
+    var toggle = el('button', 'btn soft dir-toggle');
+    toggle.type = 'button';
+    toggle.appendChild(icon('expand'));
+    toggle.appendChild(document.createTextNode('查看文件'));
+    var listNode = el('div', 'dir-list');
+    listNode.hidden = true;
+    toggle.addEventListener('click', function () {
+      listNode.hidden = !listNode.hidden;
+      toggle.lastChild.textContent = listNode.hidden ? '查看文件' : '收起';
+    });
+    var actions = el('div', 'actions');
+    actions.appendChild(toggle);
+    card.bubble.appendChild(actions);
+    card.bubble.appendChild(listNode);
+    var dir = { port: message.port, name: name, count: 0, size: 0, meta: card.meta, list: listNode };
+    dirs[name] = dir;
+    updateDirMeta(dir);
+  }
+
+  function updateDirMeta(dir) {
+    dir.meta.textContent = dir.count ? dir.count + ' 个文件 · ' + formatBytes(dir.size) : '正在读取文件列表…';
+  }
+
+  function onDirPart(message) {
+    var dir = dirs[message.partOf];
+    if (!dir || !message.path) return;
+    var path = String(message.path).replace(/\\/g, '/');
+    // 以 / 结尾的是子文件夹
+    if (path.charAt(path.length - 1) === '/') return;
+    var marker = '/' + dir.name + '/';
+    var index = path.lastIndexOf(marker);
+    var relative = index >= 0 ? path.slice(index + marker.length) : path.split('/').pop();
+    dir.count++;
+    dir.size += message.size || 0;
+    updateDirMeta(dir);
+    var item = el('div', 'dir-item');
+    var a = el('a', null, relative);
+    a.href = fileUrl(dir.port, message.path) + '?download=1';
+    a.setAttribute('download', '');
+    item.appendChild(a);
+    item.appendChild(el('span', null, formatBytes(message.size || 0)));
+    dir.list.appendChild(item);
+  }
+
+  // 浏览器发的文件（自己的或者别的浏览器的）
+  function renderWebFile(message, mine) {
+    var col = addRow(message, mine);
+    var card = fileCard(col, message.fileName || '文件');
+    card.meta.textContent = (message.fileSize || '') + (mine ? '' : ' · 已发给 ' + serverName());
+  }
+
+  function handleIncoming(message) {
+    if (!message || typeof message !== 'object') return;
+    if (message.msgType === 'notify') {
+      onNotify(message);
+      return;
+    }
+    if (message.msgType === 'dirPart') {
+      onDirPart(message);
+      return;
+    }
+    // 自己刚发的消息会从对方那里再回来一次，已经显示过就跳过
+    if (message.msgId) {
+      if (seen[message.msgId]) return;
+      seen[message.msgId] = true;
+    }
+    var mine = message.deviceId === me.id;
+    switch (message.msgType) {
+      case 'text':
+        renderText(message, mine);
+        break;
+      case 'clip':
+        renderText(message, mine, (message.deviceName || serverName()) + ' · 剪切板');
+        break;
+      case 'file':
+        renderFile(message, mine);
+        break;
+      case 'dir':
+        renderDir(message, mine);
+        break;
+      case 'webfile':
+        renderWebFile(message, mine);
+        break;
+      default:
+        break;
+    }
+  }
+
+  // ---------- 发文字 ----------
+
+  var input = $('input');
+  var sendButton = $('send');
+
+  if (!touch) input.placeholder = '输入消息，Enter 发送，Shift + Enter 换行';
+
+  function autosize() {
+    input.style.height = '42px';
+    input.style.height = Math.min(input.scrollHeight + 2, 140) + 'px';
+  }
+
+  function updateSend() {
+    sendButton.disabled = !input.value.trim();
+  }
+
+  function sendText() {
+    var content = input.value;
+    if (!content.trim()) return;
+    var message = base('text');
+    message.content = content;
+    seen[message.msgId] = true;
+    var col = renderText(message, true);
+    input.value = '';
+    autosize();
+    updateSend();
+    if (!touch) input.focus();
+    deliver(message, col);
+  }
+
+  function deliver(message, col) {
+    post(message).catch(function () {
+      var note = el('div', 'note bad', '没发出去，点这里重发');
+      note.addEventListener('click', function () {
+        col.removeChild(note);
+        deliver(message, col);
+      });
+      col.appendChild(note);
+    });
+  }
+
+  input.addEventListener('input', function () {
+    autosize();
+    updateSend();
+  });
+  input.addEventListener('keydown', function (event) {
+    // 输入法选词时的回车不算发送
+    if (event.key === 'Enter' && !event.shiftKey && !touch && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault();
+      sendText();
+    }
+  });
+  sendButton.addEventListener('click', sendText);
+
+  // ---------- 发文件 ----------
+  // 选完就直接传到对方的下载目录，同时发一条消息让对方显示进度
+
+  var uploads = {};
+  var queue = [];
+  var uploading = false;
+
+  function sendFiles(files) {
+    Array.prototype.forEach.call(files, function (file) {
+      var message = base('webfile');
+      var hash = randomId(8);
+      message.fileName = file.name;
+      message.fileSize = formatBytes(file.size);
+      message.hash = hash;
+      message.blob = 'web-' + hash;
+      seen[message.msgId] = true;
+      var upload = { file: file, message: message, status: 'queued', view: renderUpload(message, file) };
+      uploads[hash] = upload;
+      post(message).then(function () {
+        enqueue(hash);
+      }, function () {
+        upload.status = 'failed';
+        upload.view.fail();
+      });
+    });
+  }
+
+  function renderUpload(message, file) {
+    var col = addRow(message, true);
+    var card = fileCard(col, file.name);
+    if (canPreviewImage(file.name) && window.URL && URL.createObjectURL) {
+      var preview = el('div', 'preview');
+      var img = el('img');
+      img.alt = file.name;
+      img.addEventListener('load', function () { contentChanged(false); });
+      img.src = URL.createObjectURL(file);
+      preview.appendChild(img);
+      card.bubble.insertBefore(preview, card.bubble.firstChild);
+    }
+    var bar = el('div', 'progress');
+    var fill = el('i');
+    bar.appendChild(fill);
+    bar.hidden = true;
+    card.bubble.appendChild(bar);
+    card.meta.textContent = formatBytes(file.size) + ' · 等待发送';
+    var retry = null;
+    card.meta.addEventListener('click', function () {
+      if (retry) retry();
+    });
+    return {
+      progress: function (ratio, speed) {
+        retry = null;
+        card.meta.className = 'file-meta';
+        card.meta.textContent = '正在发送 ' + Math.floor(ratio * 100) + '%' + (speed ? ' · ' + speed + '/s' : '');
+        bar.hidden = false;
+        fill.style.width = (ratio * 100).toFixed(1) + '%';
+      },
+      done: function () {
+        retry = null;
+        bar.hidden = true;
+        card.meta.className = 'file-meta ok';
+        card.meta.textContent = formatBytes(file.size) + ' · 已发给 ' + serverName();
+      },
+      fail: function () {
+        bar.hidden = true;
+        card.meta.className = 'file-meta bad';
+        card.meta.textContent = '没发出去，点这里重发';
+        retry = function () {
+          var upload = uploads[message.hash];
+          if (!upload) return;
+          card.meta.className = 'file-meta';
+          card.meta.textContent = formatBytes(file.size) + ' · 等待发送';
+          // 消息本身没送到的话先补发消息
+          post(message).then(function () { enqueue(message.hash); }, function () { upload.view.fail(); });
+        };
+      }
+    };
+  }
+
+  function enqueue(hash) {
+    var upload = uploads[hash];
+    if (!upload || upload.status === 'uploading' || queue.indexOf(hash) >= 0) return;
+    upload.status = 'queued';
+    queue.push(hash);
+    pump();
+  }
+
+  function resumeUploads() {
+    Object.keys(uploads).forEach(function (hash) {
+      if (uploads[hash].status === 'failed') enqueue(hash);
+    });
+  }
+
+  function pump() {
+    if (uploading || !queue.length) return;
+    var hash = queue.shift();
+    var upload = uploads[hash];
+    if (!upload) {
+      pump();
+      return;
+    }
+    uploading = true;
+    upload.status = 'uploading';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/file_upload');
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.setRequestHeader('filename', base64Utf8(upload.file.name));
+    xhr.setRequestHeader('blob', upload.message.blob);
+    var lastTime = Date.now();
+    var lastLoaded = 0;
+    var speed = '';
+    xhr.upload.onprogress = function (event) {
+      if (!event.lengthComputable) return;
+      var now = Date.now();
+      if (now - lastTime >= 500) {
+        speed = formatBytes((event.loaded - lastLoaded) * 1000 / (now - lastTime));
+        lastTime = now;
+        lastLoaded = event.loaded;
+      }
+      upload.view.progress(event.loaded / event.total, speed);
+    };
+    var finish = function (ok) {
+      uploading = false;
+      upload.status = ok ? 'done' : 'failed';
+      if (ok) upload.view.done(); else upload.view.fail();
+      pump();
+    };
+    xhr.onload = function () { finish(xhr.status >= 200 && xhr.status < 300); };
+    xhr.onerror = function () { finish(false); };
+    xhr.onabort = function () { finish(false); };
+    upload.view.progress(0, '');
+    xhr.send(upload.file);
+  }
+
+  // 对方点了「下载」：文件还没传到的话，再传一次
+  function onNotify(message) {
+    var upload = uploads[message.hash];
+    if (upload && upload.status !== 'uploading') enqueue(message.hash);
+  }
+
+  var picker = $('picker');
+  function pickFiles() {
+    picker.value = '';
+    picker.click();
+  }
+  picker.addEventListener('change', function () {
+    if (picker.files && picker.files.length) sendFiles(picker.files);
+  });
+  $('attach').addEventListener('click', pickFiles);
+  $('empty-send').addEventListener('click', pickFiles);
+
+  // 电脑上的浏览器可以把文件拖进来，或者直接粘贴截图
+  var drop = $('drop');
+  var dragDepth = 0;
+  function hasFiles(event) {
+    var types = event.dataTransfer && event.dataTransfer.types;
+    return !!types && Array.prototype.indexOf.call(types, 'Files') >= 0;
+  }
+  window.addEventListener('dragenter', function (event) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth++;
+    drop.classList.add('show');
+  });
+  window.addEventListener('dragover', function (event) {
+    if (hasFiles(event)) event.preventDefault();
+  });
+  window.addEventListener('dragleave', function (event) {
+    if (!hasFiles(event)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) drop.classList.remove('show');
+  });
+  window.addEventListener('drop', function (event) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth = 0;
+    drop.classList.remove('show');
+    if (event.dataTransfer.files.length) sendFiles(event.dataTransfer.files);
+  });
+  document.addEventListener('paste', function (event) {
+    var files = event.clipboardData && event.clipboardData.files;
+    if (files && files.length) {
+      event.preventDefault();
+      sendFiles(files);
+    }
+  });
+
+  if (!touch) {
+    $('empty-text').textContent = '在这里发的文字和文件会出现在对方的速享里，对方发的也会显示在这里。也可以直接把文件拖进这个页面。';
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) poll();
+  });
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) poll();
+  });
+
+  renderStatus();
+  poll();
+})();
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
@@ -47,6 +48,32 @@ class ServerRoutes {
   static const String ping = '/ping';
   static const String uploadFile = '/file_upload';
   static const String message = '/message';
+  static const String info = '/info';
+
+  /// 2.2.x 及更早的速享（包括旧网页端）用它探测哪个地址能连通
+  static const String checkToken = '/check_token';
+}
+
+/// 发起请求的设备的 IP
+String _remoteAddress(Request request) {
+  final Object? info = request.context['shelf.io.connection_info'];
+  if (info is HttpConnectionInfo) {
+    return info.remoteAddress.address;
+  }
+  return 'unknown';
+}
+
+/// 浏览器是通过 [host] 打开网页的，这个地址一定连得上，放到消息里地址列表的最前面，
+/// 旧网页端按顺序逐个探测，不用再等连不上的地址超时
+Map<String, dynamic> _preferHost(Map<String, dynamic> message, String host) {
+  final Object? addrs = message['addrs'];
+  if (addrs is! List || host.isEmpty) {
+    return message;
+  }
+  return {
+    ...message,
+    'addrs': [host, ...addrs.where((e) => e != host)],
+  };
 }
 
 class _ChatService {
@@ -54,6 +81,8 @@ class _ChatService {
   static final _ChatService instance = _ChatService._();
   late final ChatController chatController = Get.find();
   late final SettingController settingController = Get.find();
+  late final DeviceController deviceController = Get.find();
+  late final DownloadController downloadController = Get.find();
   // set message handler for the server
   late final void Function(Map<String, dynamic>) messageHandler;
 
@@ -61,6 +90,20 @@ class _ChatService {
   HttpServer? _server;
   int _port = 0;
   final Set<String> _registeredPaths = {};
+
+  /// 网页端就是一个 HTML 文件，第一次有人打开时从 assets 读出来
+  String? _webPage;
+
+  Future<Response> _serveWebPage(Request request) async {
+    _webPage ??= await rootBundle.loadString('${Config.flutterPackage}assets/web/index.html');
+    return Response.ok(
+      _webPage,
+      headers: {
+        HttpHeaders.contentTypeHeader: 'text/html; charset=utf-8',
+        HttpHeaders.cacheControlHeader: 'no-cache',
+      },
+    );
+  }
 
   /// Start the HTTP server on [port]. Idempotent — only starts once.
   Future<void> start() async {
@@ -71,6 +114,21 @@ class _ChatService {
     _router.get(ServerRoutes.ping, (Request request) {
       return Response.ok('pong');
     });
+    _router.get(ServerRoutes.checkToken, (Request request) {
+      return Response.ok('success');
+    });
+    // 网页端打开时用来显示连上的是哪台设备
+    _router.get(ServerRoutes.info, (Request request) {
+      return Response.ok(
+        jsonEncode({
+          'deviceName': deviceController.deviceName,
+          'deviceType': deviceController.deviceType.name,
+        }),
+        headers: {HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8'},
+      );
+    });
+    _router.get('/', _serveWebPage);
+    _router.get('/index.html', _serveWebPage);
     // TODO: Consider change route path?
     _router.post('/', (Request request) async {
       Map<String, dynamic> data = jsonDecode(await request.readAsString());
@@ -83,67 +141,29 @@ class _ChatService {
         },
       );
     });
-    _router.post(ServerRoutes.uploadFile, (Request request) async {
-      Log.w(request.headers);
-      String? fileName = request.headers['filename'];
-      if (fileName != null) {
-        fileName = utf8.decode(base64Decode(fileName));
-        SettingController settingController = Get.find();
-        String? downPath = settingController.savePath;
-        File file = File(getSafePath('$downPath/$fileName'));
-        // 保存目录（Windows 上默认在 exe 旁边）第一次接收文件时还不存在
-        await file.parent.create(recursive: true);
-        RandomAccessFile randomAccessFile = await file.open(
-          mode: FileMode.write,
-        );
-        int? fullLength = int.tryParse(request.headers['content-length']!);
-        Log.d('fullLength -> $fullLength');
-        Completer<bool> lock = Completer();
-        // 已经下载的字节长度
-        // Already downloaded byte length
-        int count = 0;
-        DownloadInfo info = DownloadInfo();
-        DownloadController downloadController = Get.find();
-        final blob = request.headers['blob'];
-        downloadController.progress[blob] = info;
-        request.read().listen(
-          (event) async {
-            count += event.length;
-            randomAccessFile.writeFromSync(event);
-            double progress = count / fullLength!;
-            info.count = count;
-            info.progress = progress;
-            downloadController.update();
-            if (progress == 1.0) {
-              lock.complete(true);
-            }
-          },
-          onDone: () {},
-        );
-        await lock.future;
-        randomAccessFile.close();
-        Log.v('success');
-      }
-      return Response.ok("success");
-    });
+    _router.post(ServerRoutes.uploadFile, _receiveUpload);
+    // 浏览器轮询这里取消息。新网页端会带上自己的 id 和名字，旧网页端什么都不带，按 IP 区分
     _router.get(ServerRoutes.message, (Request request) {
-      if (chatController.messageWebCache.isNotEmpty) {
-        return Response.ok(jsonEncode(chatController.messageWebCache.removeAt(0)));
-      }
-      return Response.ok(
-        jsonEncode(
-          {
-            "type": "none",
-          },
-        ),
+      final Map<String, String> query = request.url.queryParameters;
+      final String address = _remoteAddress(request);
+      final String id = query['id'] ?? 'ip:$address';
+      deviceController.onBrowserPoll(id, query['name'] ?? '浏览器 $address', address);
+      final bool batch = query['batch'] == '1';
+      final List<Map<String, dynamic>> messages = chatController.webHub.take(
+        id,
+        max: batch ? 100 : 1,
+        reset: query['reset'] == '1',
       );
+      final String host = request.requestedUri.host;
+      final List<Map<String, dynamic>> result = [
+        for (final Map<String, dynamic> message in messages) _preferHost(message, host),
+      ];
+      // 旧网页端一次只取一条，没有消息时要回 {"type": "none"}
+      if (batch) {
+        return Response.ok(jsonEncode(result));
+      }
+      return Response.ok(jsonEncode(result.isEmpty ? {'type': 'none'} : result.first));
     });
-    // 返回速享网页的handler
-    var webHandler = createStaticHandler(
-      RuntimeEnvir.filesPath,
-      listDirectories: true,
-      defaultDocument: 'index.html',
-    );
     _router.mount('/', (r) async {
       // `http://192.168.0.103:12000/sdcard/`的形式，说明是想要访问文件
       if (r.requestedUri.path.startsWith('/sdcard') || file_manager.Server.routes.contains(r.requestedUri.path)) {
@@ -166,10 +186,8 @@ class _ChatService {
             },
           );
         }
-      } else {
-        // `http://192.168.0.103:12000/`的形式，说明是想要打开速享网页端
-        return webHandler(r);
       }
+      return Response.notFound('Not Found');
     });
     pipeline = pipeline.addMiddleware(logRequests());
     pipeline = pipeline.addMiddleware(_corsMiddleware());
@@ -189,6 +207,57 @@ class _ChatService {
       }
     }
     Log.i('ChatService started on port $_port', _tag);
+  }
+
+  /// 接收浏览器上传的文件，存到下载目录，进度记在 DownloadController 里（key 是请求头里的 blob）
+  Future<Response> _receiveUpload(Request request) async {
+    final String? encodedName = request.headers['filename'];
+    if (encodedName == null) {
+      return Response.badRequest(body: 'missing filename');
+    }
+    // 只取文件名，防止 ../ 之类的路径把文件写到下载目录外面
+    final String fileName = p.basename(utf8.decode(base64Decode(encodedName)).replaceAll('\\', '/'));
+    if (fileName.isEmpty || fileName == '.' || fileName == '..') {
+      return Response.badRequest(body: 'bad filename');
+    }
+    final File file = File(getSafePath('${settingController.savePath}/$fileName'));
+    // 保存目录（Windows 上默认在 exe 旁边）第一次接收文件时还不存在
+    await file.parent.create(recursive: true);
+    final int? fullLength = int.tryParse(request.headers['content-length'] ?? '');
+    final DownloadInfo info = DownloadInfo();
+    downloadController.progress[request.headers['blob']] = info;
+    final Timer speedTimer = await downloadController.computeNetSpeed(info);
+    final IOSink sink = file.openWrite();
+    DateTime lastUpdate = DateTime(2000);
+    try {
+      await for (final List<int> chunk in request.read()) {
+        sink.add(chunk);
+        info.count += chunk.length;
+        if (fullLength != null && fullLength > 0) {
+          // 文件关闭前不显示 100%
+          info.progress = (info.count / fullLength).clamp(0.0, 0.99);
+        }
+        final DateTime now = DateTime.now();
+        if (now.difference(lastUpdate) > const Duration(milliseconds: 100)) {
+          lastUpdate = now;
+          downloadController.update();
+        }
+      }
+      await sink.close();
+    } catch (e) {
+      Log.e('receive upload error : $e');
+      speedTimer.cancel();
+      await sink.close();
+      info.progress = 0;
+      downloadController.update();
+      return Response.internalServerError(body: 'upload failed');
+    }
+    speedTimer.cancel();
+    info.progress = 1.0;
+    info.path = file.path;
+    downloadController.update();
+    Log.v('receive upload success : ${file.path}');
+    return Response.ok('success');
   }
 
   String _normalize(String filePath) {

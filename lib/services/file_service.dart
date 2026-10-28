@@ -36,6 +36,28 @@ Handler _corsHandler(Handler innerHandler) {
   };
 }
 
+/// 浏览器下载时链接带 `?download=1`，回一个 Content-Disposition，让浏览器按原文件名保存，
+/// 而不是直接打开图片、文本之类的文件
+Middleware _downloadMiddleware() {
+  return (Handler innerHandler) {
+    return (request) async {
+      final response = await innerHandler(request);
+      if (!request.url.queryParameters.containsKey('download') || response.statusCode != 200) {
+        return response;
+      }
+      String name = p.url.basename(request.url.path);
+      try {
+        name = Uri.decodeComponent(name);
+      } catch (_) {}
+      // RFC 5987 的写法，中文文件名也能正确保存
+      final String encoded = Uri.encodeComponent(name).replaceAll("'", '%27').replaceAll('(', '%28').replaceAll(')', '%29').replaceAll('*', '%2A');
+      return response.change(
+        headers: {'content-disposition': "attachment; filename*=UTF-8''$encoded"},
+      );
+    };
+  };
+}
+
 /// TODO: Consider use isolate to server every file
 class _FileService {
   _FileService._internal();
@@ -53,9 +75,14 @@ class _FileService {
     if (_server != null) {
       return;
     }
+    // 别的设备收到文件消息后，先挨个探测消息里的地址哪个能连上：
+    // 新版速享请求 /ping，2.2.x 及更早的版本（包括旧网页端）请求 /check_token
+    _router.get('/ping', (Request request) => Response.ok('pong'));
+    _router.get('/check_token', (Request request) => Response.ok('success'));
     var pipeline = const Pipeline();
     pipeline = pipeline.addMiddleware(logRequests());
     pipeline = pipeline.addMiddleware(_corsMiddleware());
+    pipeline = pipeline.addMiddleware(_downloadMiddleware());
     final handler = pipeline.addHandler(_router);
     int rangeStart = Config.shelfPortRangeStart;
     int rangeEnd = Config.shelfPortRangeEnd;

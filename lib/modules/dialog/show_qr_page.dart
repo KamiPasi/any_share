@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'package:speed_share/controllers/controllers.dart';
 import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/services/services.dart';
 import 'package:speed_share/themes/app_ui.dart';
@@ -17,22 +19,13 @@ class ShowQRPage extends StatefulWidget {
 }
 
 class _ShowQRPageState extends State<ShowQRPage> {
-  List<LanAddress> addresses = [];
-  int selected = 0;
-  bool loaded = false;
+  final LanAddressController lanAddressController = Get.find();
 
   @override
   void initState() {
     super.initState();
-    lanAddresses().then((value) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        addresses = value;
-        loaded = true;
-      });
-    });
+    // 打开二维码时重新读一次网卡，期间可能插拔过网线、开关过 VPN
+    lanAddressController.refreshAddresses();
   }
 
   @override
@@ -77,7 +70,9 @@ class _ShowQRPageState extends State<ShowQRPage> {
                           style: TextStyle(fontSize: 13, color: AppUi.textSecondary, height: 1.5),
                         ),
                         const SizedBox(height: 16),
-                        content(),
+                        GetBuilder<LanAddressController>(
+                          builder: (controller) => content(controller),
+                        ),
                       ],
                     ),
                   ),
@@ -90,14 +85,16 @@ class _ShowQRPageState extends State<ShowQRPage> {
     );
   }
 
-  Widget content() {
-    if (!loaded) {
+  Widget content(LanAddressController controller) {
+    final List<LanAddress> addresses = controller.addresses;
+    final LanAddress? address = controller.selected;
+    if (!controller.loaded) {
       return const SizedBox(
         height: 260,
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    if (addresses.isEmpty) {
+    if (address == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
         child: Text(
@@ -107,15 +104,15 @@ class _ShowQRPageState extends State<ShowQRPage> {
         ),
       );
     }
-    final String url = addresses[selected].url(widget.port ?? ChatService.port);
+    final String url = address.url(widget.port ?? ChatService.port);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (addresses.length > 1) ...[
           UiAddressSelector(
             addresses: addresses,
-            selected: selected,
-            onChanged: (i) => setState(() => selected = i),
+            selected: controller.selectedIndex,
+            onChanged: controller.select,
           ),
           const SizedBox(height: 16),
         ],

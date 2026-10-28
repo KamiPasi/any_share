@@ -16,6 +16,9 @@ class Device {
   int? messagePort;
   bool isAlive = true;
 
+  /// 浏览器最近一次来取消息的时间，浏览器靠它判断在不在线
+  DateTime? lastSeen;
+
   /// 当一个新的设备连接到当前设备的时候，需要回一个连接消息。
   ///
   /// 用来处理 UDP 广播只有 A -> B，没有 B -> A 的情况，

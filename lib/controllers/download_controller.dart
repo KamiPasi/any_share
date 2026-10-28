@@ -14,6 +14,9 @@ class DownloadInfo {
   double progress = 0;
   String? speed = '0';
   int count = 0;
+
+  /// 收完之后文件存在哪儿，目前只有浏览器上传的文件会填
+  String? path;
 }
 
 // TODO:Compare with file_manager's DonwloadController

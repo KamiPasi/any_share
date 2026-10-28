@@ -16,7 +16,6 @@ import 'package:file_manager/file_manager.dart' as file_manager;
 import 'services/clipboard_service.dart';
 import 'services/desktop_service.dart';
 import 'services/discovery_service.dart';
-import 'utils/assets_util.dart';
 import 'controllers/controllers.dart';
 import 'common/config.dart';
 import 'root_view.dart';
@@ -65,6 +64,7 @@ Future<void> main() async {
         await initSetting();
       }
       Get.put(SettingController());
+      Get.put(LanAddressController());
       Get.put(DeviceController()..init());
       Get.put(ChatController()..init());
       Get.put(FileController());
@@ -143,7 +143,6 @@ Future<void> initApp() async {
   udpData += ',${ChatService.port}';
   // 将设备 ID 与聊天服务器成功创建的端口 UDP 广播出去
   DiscoveryService.instance.startBroadcast(udpData);
-  unpackWebResource();
   await initApi('Speed Share', Config.versionName);
   requestManageStorage();
 }

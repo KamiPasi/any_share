@@ -3,3 +3,4 @@ export 'device_controller.dart';
 export 'file_controller.dart';
 export 'setting_controller.dart';
 export 'download_controller.dart';
+export 'lan_address_controller.dart';

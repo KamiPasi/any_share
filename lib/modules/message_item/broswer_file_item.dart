@@ -129,22 +129,43 @@ class _BroswerFileItemState extends State<BroswerFileItem> {
           GetBuilder<DownloadController>(
             builder: (_) => downloadProgress(),
           ),
-        if (!mine) ...[
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              UiButton(
-                label: '下载',
-                icon: Icons.download_rounded,
-                variant: UiButtonVariant.soft,
-                dense: true,
-                height: 34,
-                onPressed: requestUpload,
-              ),
-            ],
+        if (!mine)
+          GetBuilder<DownloadController>(
+            builder: (_) => actions(),
           ),
-        ],
       ],
+    );
+  }
+
+  // 新网页端选完文件就直接上传，旧网页端要这边点「下载」才开始传
+  Widget actions() {
+    final DownloadInfo info = downloadController.getInfo(url)!;
+    final Widget button;
+    if (info.progress >= 1.0 && info.path != null) {
+      button = UiButton(
+        label: '打开',
+        icon: Icons.open_in_new_rounded,
+        variant: UiButtonVariant.soft,
+        dense: true,
+        height: 34,
+        onPressed: () => FileUtil.openFile(info.path!),
+      );
+    } else if (info.progress > 0) {
+      // 正在接收，进度条在上面
+      return const SizedBox.shrink();
+    } else {
+      button = UiButton(
+        label: '下载',
+        icon: Icons.download_rounded,
+        variant: UiButtonVariant.soft,
+        dense: true,
+        height: 34,
+        onPressed: requestUpload,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(children: [button]),
     );
   }
 
