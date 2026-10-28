@@ -4,11 +4,13 @@ plugins {
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
-// 本地编译注释以下代码
+// 没有 key.properties 时跳过加载，signing.gradle 会改用调试签名
 // start
 def keystorePropertiesFile = rootProject.file('key.properties')
 def keystoreProperties = new Properties()
-keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+if (keystorePropertiesFile.canRead()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
 // end
 android {
     def appId = 'com.nightmare.fastshare'
