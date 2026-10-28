@@ -11,10 +11,9 @@ if (propsFile.canRead()) {
         keyPassword props['KEY_PASSWORD']
     }
 } else {
-    android.signingConfigs.sign.with {
-        storeFile android.signingConfigs.debug.storeFile
-        storePassword android.signingConfigs.debug.storePassword
-        keyAlias android.signingConfigs.debug.keyAlias
-        keyPassword android.signingConfigs.debug.keyPassword
+    // 没有 key.properties 时改用调试签名。要直接用名为 debug 的签名配置，
+    // AGP 才会在 debug.keystore 不存在时自动生成（CI 上没有现成的）
+    android.buildTypes.all { buildType ->
+        buildType.signingConfig = android.signingConfigs.debug
     }
 }
