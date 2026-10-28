@@ -13,6 +13,19 @@ rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+// super_native_extensions 等插件还在用 compileSdk 31，新版 Flutter 引入的 androidx 库要求至少 34，
+// AGP 检查 AAR 元数据时会报错。这里把插件的 compileSdk 提到和 app 一样的 36。
+// 必须放在 evaluationDependsOn(':app') 之前，否则 app 已经配置完，没法再注册 afterEvaluate
+subprojects {
+    afterEvaluate { project ->
+        if (project.plugins.hasPlugin('com.android.library')) {
+            def android = project.android
+            if (android.compileSdk == null || android.compileSdk < 36) {
+                android.compileSdk = 36
+            }
+        }
+    }
+}
 subprojects {
     project.evaluationDependsOn(':app')
 }
