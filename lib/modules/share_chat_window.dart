@@ -87,7 +87,8 @@ class _ShareChatV2State extends State<ShareChatV2> with SingleTickerProviderStat
         left: false,
         child: Column(
           children: [
-            if (ResponsiveBreakpoints.of(context).isMobile) appbar(context) else SizedBox(height: $(10)),
+            // 宽窗口也要显示：显示二维码和「输入连接」只有这一个入口
+            appbar(context),
             Expanded(
               child: Row(
                 children: [
@@ -191,16 +192,17 @@ class _ShareChatV2State extends State<ShareChatV2> with SingleTickerProviderStat
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  NiIconButton(
-                    onTap: () {
-                      ScanUtil.parseScan();
-                    },
-                    child: SvgPicture.asset(
-                      SvgAssets.qrCodeScan,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      width: $(24),
+                  if (ScanUtil.isSupported)
+                    NiIconButton(
+                      onTap: () {
+                        ScanUtil.parseScan();
+                      },
+                      child: SvgPicture.asset(
+                        SvgAssets.qrCodeScan,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        width: $(24),
+                      ),
                     ),
-                  ),
                   NiIconButton(
                     onTap: () {
                       Get.dialog(
