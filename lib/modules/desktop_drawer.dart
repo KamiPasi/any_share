@@ -266,7 +266,7 @@ class _DesktopDrawerState extends State<DesktopDrawer> {
             )
           else ...[
             SelectableText(
-              '${address.ip}:${ChatService.port}',
+              address.hostPort(ChatService.port),
               style: AppUi.mono(fontSize: 13),
             ),
             const SizedBox(height: 2),

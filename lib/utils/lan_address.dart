@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:speed_share/common/config.dart';
+
 /// 本机的一个局域网地址，name 是网卡名，比如「以太网」「WLAN」
 class LanAddress {
   const LanAddress(this.name, this.ip);
@@ -7,7 +9,13 @@ class LanAddress {
   final String name;
   final String ip;
 
-  String url(int port) => 'http://$ip:$port';
+  /// 「地址:端口」，端口传 ChatService.port。服务还没启动时它是 0 或 null，这时用默认端口
+  String hostPort(int? port) {
+    final int value = port == null || port == 0 ? Config.chatPortRangeStart : port;
+    return '$ip:$value';
+  }
+
+  String url(int? port) => 'http://${hostPort(port)}';
 }
 
 // 虚拟网卡（WSL、Hyper-V、虚拟机、Docker、组网工具）的地址别的设备一般连不上，排到后面
