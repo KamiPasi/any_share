@@ -91,6 +91,8 @@ class _ChatService {
         SettingController settingController = Get.find();
         String? downPath = settingController.savePath;
         File file = File(getSafePath('$downPath/$fileName'));
+        // 保存目录（Windows 上默认在 exe 旁边）第一次接收文件时还不存在
+        await file.parent.create(recursive: true);
         RandomAccessFile randomAccessFile = await file.open(
           mode: FileMode.write,
         );
