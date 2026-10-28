@@ -91,6 +91,16 @@ dev_dependencies:
   build_runner: ^2.4.9
   json_serializable: ^6.7.1
 
+# 上游 pubspec.lock 里这两个是作者本地覆盖过的版本，提交的 pubspec.yaml 里漏了，CI 会解析到不兼容的版本
+dependency_overrides:
+  # pub.dev 上最新的 0.0.12 里 tag 还是命名参数，速享和 global_repository 用的是 git 版的位置参数写法
+  signale:
+    git:
+      url: https://github.com/nightmare-space/signale
+      ref: 346dc65012ba6b19f5f4de86598da8a0e45816a8
+  # global_repository 固定了 6.0.0，它的安卓模块没有 namespace，AGP 8 编译不过
+  permission_handler: 11.3.1
+
 flutter:
   generate: true
   uses-material-design: true
