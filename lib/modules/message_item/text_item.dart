@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:global_repository/global_repository.dart';
 
-import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/models/models.dart';
-import 'package:speed_share/themes/theme.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
 
 class TextMessageItem extends StatelessWidget {
   final TextMessage? info;
@@ -13,70 +11,37 @@ class TextMessageItem extends StatelessWidget {
   const TextMessageItem({Key? key, this.info, this.sendByUser}) : super(key: key);
   @override
   Widget build(BuildContext context) {
-    final $ = context.$;
+    final bool mine = sendByUser!;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: sendByUser! ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: sendByUser! ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.all($(10)),
-              decoration: BoxDecoration(
-                color: context.colorScheme.surface,
-                borderRadius: BorderRadius.circular($(10)),
-              ),
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: $(260)),
-                    child: Column(
-                      children: [
-                        Theme(
-                          data: ThemeData(
-                            textSelectionTheme: const TextSelectionThemeData(
-                              cursorColor: Colors.red,
-                            ),
-                          ),
-                          child: SelectableText(
-                            info!.content!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: $(14),
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        if (!sendByUser!)
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () async {
-                showToast(l10n.copyed);
-                await Clipboard.setData(
-                  ClipboardData(
-                    text: info!.content ?? '',
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Icon(
-                  Icons.content_copy,
-                  size: $(18),
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: UiBubble(
+              sendByUser: mine,
+              child: SelectableText(
+                info!.content!,
+                style: const TextStyle(
+                  color: AppUi.text,
+                  fontSize: 14.5,
+                  height: 1.5,
                 ),
               ),
+            ),
+          ),
+        ),
+        // 别的设备发来的文字可以一键复制
+        if (!mine)
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: UiIconButton(
+              icon: Icons.content_copy_rounded,
+              tooltip: '复制',
+              size: 32,
+              iconSize: 16,
+              color: AppUi.textSecondary,
+              onPressed: () => uiCopy(info!.content ?? '', message: '已复制'),
             ),
           ),
       ],

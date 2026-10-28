@@ -7,7 +7,8 @@ import 'package:speed_share/controllers/controllers.dart';
 import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/models/models.dart';
 import 'package:speed_share/modules/widget/icon.dart';
-import 'package:speed_share/themes/theme.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
 import 'package:speed_share/utils/utils.dart';
 
 class BroswerFileItem extends StatefulWidget {
@@ -54,221 +55,171 @@ class _BroswerFileItemState extends State<BroswerFileItem> {
     return url;
   }
 
+  // 让浏览器把文件传上来，传完才能下载
+  void requestUpload() {
+    if (GetPlatform.isWeb) {
+      return;
+    }
+    gr.showToast(l10n.notifyBroswerTip);
+    chatController.notifyBrowserUploadFile(widget.info!.hash);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool mine = widget.sendByUser!;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: widget.sendByUser! ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
-        Material(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular($(10)),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onLongPress: () {},
-            child: GestureDetector(
-              onTapDown: (details) {
-                offset = details.globalPosition;
-              },
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: UiBubble(
+              sendByUser: mine,
+              padding: const EdgeInsets.all(12),
               child: body(context),
             ),
           ),
         ),
-        // 展示下载按钮
-        if (!widget.sendByUser!)
-          Material(
-            color: Colors.transparent,
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () async {
-                    if (GetPlatform.isWeb) {
-                      return;
-                    }
-                    gr.showToast(l10n.notifyBroswerTip);
-                    chatController.notifyBrowserUploadFile(widget.info!.hash);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.file_download,
-                      size: $(18),
-                    ),
-                  ),
-                ),
-                InkWell(
-                  onTap: () async {},
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.content_copy,
-                      size: $(18),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
       ],
     );
   }
 
-  Padding body(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all($(10)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: $(200)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget body(BuildContext context) {
+    final bool mine = widget.sendByUser!;
+    // 展示下载进度
+    final bool showProgress = !mine && !GetPlatform.isWeb;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Builder(
-              builder: (context) {
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    // if (fileDownratio == 1.0 && !timer.isActive) {
-                    //   OpenFile.open(savePath);
-                    // }
-                  },
-                  child: buildPreviewWidget(url),
-                );
-              },
+            UiFileBadge(
+              highlighted: mine,
+              child: buildPreviewWidget(),
             ),
-            // 展示下载进度条
-            if (!widget.sendByUser! && !GetPlatform.isWeb)
-              GetBuilder<DownloadController>(
-                builder: (context) {
-                  DownloadInfo info = downloadController.getInfo(url)!;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      SizedBox(
-                        height: $(8),
-                      ),
-                      ClipRRect(
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(25.0),
-                        ),
-                        child: Builder(
-                          builder: (context) {
-                            double pro = info.progress;
-                            return LinearProgressIndicator(
-                              backgroundColor: Theme.of(context).colorScheme.surface3,
-                              valueColor: AlwaysStoppedAnimation(
-                                pro == 1.0 ? Theme.of(context).primaryColor : Theme.of(context).primaryColor.withOpacityExact(0.4),
-                              ),
-                              value: pro,
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: $(4),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Builder(
-                            builder: (_) {
-                              double pro = downloadController.getProgress(url);
-                              if (pro == 1.0) {
-                                return Icon(
-                                  Icons.check,
-                                  size: $(16),
-                                  color: Colors.green,
-                                );
-                              }
-                              return Text(
-                                '${info.speed}/s',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: $(12),
-                                ),
-                              );
-                            },
-                          ),
-                          Row(
-                            children: [
-                              SizedBox(
-                                child: Text(
-                                  gr.FileUtil.formatBytes(info.count),
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: $(12),
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                '/',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: $(12),
-                                ),
-                              ),
-                              SizedBox(
-                                child: Text(
-                                  widget.info!.fileSize!,
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: $(12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.info!.fileName!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppUi.text, height: 1.35),
+                  ),
+                  const SizedBox(height: 2),
+                  if (showProgress)
+                    GetBuilder<DownloadController>(
+                      builder: (_) => downloadStatus(),
+                    )
+                  else
+                    Text(
+                      widget.info!.fileSize ?? '',
+                      style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
+                    ),
+                ],
               ),
+            ),
           ],
+        ),
+        if (showProgress)
+          GetBuilder<DownloadController>(
+            builder: (_) => downloadProgress(),
+          ),
+        if (!mine) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              UiButton(
+                label: '下载',
+                icon: Icons.download_rounded,
+                variant: UiButtonVariant.soft,
+                dense: true,
+                height: 34,
+                onPressed: requestUpload,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget downloadStatus() {
+    final DownloadInfo info = downloadController.getInfo(url)!;
+    final double progress = info.progress;
+    final String size = widget.info!.fileSize ?? '';
+    if (progress >= 1.0) {
+      return Row(
+        children: [
+          const Icon(Icons.check_rounded, size: 14, color: AppUi.onlineText),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              '已下载 · $size',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppUi.onlineText),
+            ),
+          ),
+        ],
+      );
+    }
+    if (progress > 0) {
+      return Text(
+        '${gr.FileUtil.formatBytes(info.count)} / $size · ${info.speed}/s',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
+      );
+    }
+    return Text(
+      size,
+      style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
+    );
+  }
+
+  Widget downloadProgress() {
+    final double progress = downloadController.getProgress(url);
+    if (progress <= 0 || progress >= 1.0) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: LinearProgressIndicator(
+          value: progress,
+          minHeight: 4,
+          backgroundColor: AppUi.segment,
+          color: AppUi.accent,
         ),
       ),
     );
   }
 
-  UniqueKey key = UniqueKey();
-  Widget buildPreviewWidget(String? url) {
-    return InkWell(
-      child: Row(
-        children: [
-          if (widget.info!.fileName!.isImageFile && widget.sendByUser!)
-            // 文件名是图片的时候，用blob协议展示
-            Hero(
-              tag: widget.info!.blob!,
-              child: GestureDetector(
-                onTap: () {
-                  FileUtil.openFile(widget.info!.blob!);
-                },
-                child: Image(
-                  width: $(36),
-                  height: $(36),
-                  fit: BoxFit.cover,
-                  image: ResizeImage(
-                    NetworkImage(widget.info!.blob!),
-                    width: 100,
-                  ),
-                ),
-              ),
-            )
-          else
-            // 传入文件名，已展示对应的图标
-            getIconByExt(widget.info!.fileName!, context),
-          SizedBox(width: $(8)),
-          Expanded(
-            child: Text(
-              widget.info!.fileName!,
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: $(12),
-              ),
-            ),
+  Widget buildPreviewWidget() {
+    if (widget.info!.fileName!.isImageFile && widget.sendByUser!) {
+      // 文件名是图片的时候，用blob协议展示
+      return GestureDetector(
+        onTap: () {
+          FileUtil.openFile(widget.info!.blob!);
+        },
+        child: Image(
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+          image: ResizeImage(
+            NetworkImage(widget.info!.blob!),
+            width: 100,
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
+    // 传入文件名，已展示对应的图标
+    return getIconByExt(widget.info!.fileName!, context);
   }
 }

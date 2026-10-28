@@ -14,6 +14,7 @@ import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/modules/desktop_drawer.dart';
 import 'package:speed_share/modules/personal/setting/setting_page.dart';
 import 'package:speed_share/modules/share_chat_window.dart';
+import 'package:speed_share/themes/app_ui.dart';
 
 class DesktopHome extends StatefulWidget {
   const DesktopHome({Key? key}) : super(key: key);
@@ -102,6 +103,7 @@ class _DesktopHomeState extends State<DesktopHome> {
       child: Stack(
         children: [
           Scaffold(
+            backgroundColor: AppUi.background,
             body: SafeArea(
               left: false,
               child: Column(
@@ -138,14 +140,29 @@ class _DesktopHomeState extends State<DesktopHome> {
                 sigmaY: 4.0,
               ),
               child: Material(
-                color: Colors.transparent,
+                color: AppUi.background.withValues(alpha: 0.7),
                 child: Center(
-                  child: Text(
-                    l10n.dropFileTip,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
-                      fontSize: $(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+                    decoration: BoxDecoration(
+                      color: AppUi.surface,
+                      border: Border.all(color: AppUi.accent, width: 2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.file_upload_outlined, size: 40, color: AppUi.accent),
+                        const SizedBox(height: 12),
+                        Text(
+                          l10n.dropFileTip,
+                          style: const TextStyle(
+                            color: AppUi.text,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

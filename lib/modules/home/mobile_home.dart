@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:animations/animations.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:global_repository/global_repository.dart';
 
-import 'package:speed_share/common/assets.dart';
+import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/modules/personal/setting/setting_page.dart';
 import 'package:speed_share/modules/share_chat_window.dart';
+import 'package:speed_share/themes/app_ui.dart';
 
 class MobileHome extends StatefulWidget {
   const MobileHome({Key? key}) : super(key: key);
@@ -19,64 +18,54 @@ class _MobileHomeState extends State<MobileHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppUi.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Builder(
-                builder: (context) {
-                  return PageTransitionSwitcher(
-                    transitionBuilder:
-                        (
-                          Widget child,
-                          Animation<double> animation,
-                          Animation<double> secondaryAnimation,
-                        ) {
-                          return FadeThroughTransition(
-                            animation: animation,
-                            secondaryAnimation: secondaryAnimation,
-                            child: child,
-                          );
-                        },
-                    child: [
-                      const ShareChatV2(),
-                      const SettingPage(),
-                    ][page],
-                  );
-                },
-              ),
-            ),
-          ],
+        bottom: false,
+        child: PageTransitionSwitcher(
+          transitionBuilder:
+              (
+                Widget child,
+                Animation<double> animation,
+                Animation<double> secondaryAnimation,
+              ) {
+                return FadeThroughTransition(
+                  animation: animation,
+                  secondaryAnimation: secondaryAnimation,
+                  child: child,
+                );
+              },
+          child: [
+            const ShareChatV2(),
+            const SettingPage(),
+          ][page],
         ),
       ),
-      bottomNavigationBar: SizedBox(
-        height: 60,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: AppUi.border)),
+        ),
         child: NavigationBar(
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+          height: 64,
+          elevation: 0,
           selectedIndex: page,
-          backgroundColor: Theme.of(context).colorScheme.surface,
+          backgroundColor: AppUi.surface,
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: AppUi.accentSoft,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           onDestinationSelected: (index) {
             page = index;
             setState(() {});
           },
           destinations: [
-            NavigationDestination(
-              icon: SvgPicture.asset(
-                SvgAssets.message,
-                width: $(24),
-                height: $(24),
-                color: Theme.of(context).primaryColor,
-              ),
-              label: '首页',
+            const NavigationDestination(
+              icon: Icon(Icons.chat_bubble_outline_rounded),
+              selectedIcon: Icon(Icons.chat_bubble_rounded, color: AppUi.accentText),
+              label: '消息',
             ),
             NavigationDestination(
-              icon: SvgPicture.asset(
-                SvgAssets.setting,
-                width: $(24),
-                height: $(24),
-                color: Theme.of(context).primaryColor,
-              ),
-              label: '设置',
+              icon: const Icon(Icons.tune_rounded),
+              selectedIcon: const Icon(Icons.tune_rounded, color: AppUi.accentText),
+              label: l10n.setting,
             ),
           ],
         ),

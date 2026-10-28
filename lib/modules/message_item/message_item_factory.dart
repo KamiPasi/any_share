@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:global_repository/global_repository.dart';
-import 'package:speed_share/common/device_type_extension.dart';
 import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/models/models.dart';
 import 'package:speed_share/modules/message_item/text_item.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
 import 'broswer_file_item.dart';
 import 'dir_item.dart';
 import 'file_item.dart';
@@ -11,7 +11,6 @@ import 'file_item.dart';
 class MessageItemFactory {
   // TODO: Use extension
   static Widget? getMessageItem(MessageBaseInfo? info, bool sendByUser, BuildContext context) {
-    final $ = context.$;
     Widget? child;
     if (info is TextMessage) {
       child = TextMessageItem(
@@ -37,69 +36,44 @@ class MessageItemFactory {
     if (child == null) {
       return null;
     }
+    final MessageBaseInfo message = info!;
+    final Widget content = child;
     return Builder(
       builder: (context) {
-        return Align(
-          alignment: sendByUser ? Alignment.centerLeft : Alignment.centerLeft,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: $(10),
-              vertical: $(8),
-            ),
-            child: Column(
-              crossAxisAlignment: sendByUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                if (info!.deviceName != null && info.deviceName!.isNotEmpty)
-                  Row(
-                    mainAxisAlignment: sendByUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: info.deviceType?.deviceColor.withOpacityExact(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: $(8),
-                          vertical: $(4),
-                        ),
-                        child: Center(
-                          child: Text(
-                            info.deviceName ?? '',
-                            style: TextStyle(
-                              fontSize: $(12),
-                              color: info.deviceType?.deviceColor,
-                            ),
-                          ),
+        // 别的设备发来的消息在气泡上方显示设备名，剪切板消息另外标出来
+        String sender = message.deviceName ?? '';
+        if (message is ClipboardMessage) {
+          sender = sender.isEmpty ? l10n.clipboard : '$sender · ${l10n.clipboard}';
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+          child: Row(
+            mainAxisAlignment: sendByUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!sendByUser) ...[
+                UiDeviceAvatar(type: message.deviceType, size: 32),
+                const SizedBox(width: 10),
+              ],
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: sendByUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    if (!sendByUser && sender.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          sender,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
                         ),
                       ),
-                      SizedBox(width: $(4)),
-                      if (info is ClipboardMessage)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: info.deviceType?.deviceColor.withOpacityExact(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          margin: EdgeInsets.only(left: $(4)),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: $(8),
-                            vertical: $(4),
-                          ),
-                          child: Center(
-                            child: Text(
-                              context.l10n.clipboard,
-                              style: TextStyle(fontSize: $(12), color: info.deviceType?.deviceColor),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                SizedBox(
-                  height: $(4),
+                    content,
+                  ],
                 ),
-                if (child != null) child,
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:global_repository/global_repository.dart';
 import 'theme.dart';
 
@@ -9,10 +10,31 @@ ThemeData light(
 }) {
   final $ = context.$;
   final lightThemeData = ThemeData.light(useMaterial3: true);
-  ColorScheme colorScheme = ColorScheme.fromSeed(seedColor: seed, brightness: Brightness.light);
+  // 配色和新界面的设计稿保持一致，老页面用到的 surface、surfaceContainer 等也一起换掉
+  ColorScheme colorScheme = ColorScheme.fromSeed(seedColor: AppUi.accent, brightness: Brightness.light).copyWith(
+    primary: AppUi.accent,
+    onPrimary: Colors.white,
+    surface: AppUi.surface,
+    onSurface: AppUi.text,
+    onSurfaceVariant: AppUi.textSecondary,
+    surfaceContainerLowest: AppUi.surface,
+    surfaceContainerLow: AppUi.surfaceMuted,
+    surfaceContainer: AppUi.subtle,
+    surfaceContainerHigh: AppUi.segment,
+    surfaceContainerHighest: const Color(0xffe3e5ea),
+    outline: AppUi.borderStrong,
+    outlineVariant: AppUi.border,
+  );
+  // Windows 上不指定字体时中文会落到不统一的后备字体上
+  final String? fontFamily = GetPlatform.isWindows ? 'Microsoft YaHei UI' : null;
+  final TextTheme textTheme = lightThemeData.textTheme.apply(
+    fontFamily: fontFamily,
+    bodyColor: AppUi.text,
+    displayColor: AppUi.text,
+  );
   return lightThemeData.copyWith(
     primaryColor: colorScheme.primary,
-    scaffoldBackgroundColor: colorScheme.surface,
+    scaffoldBackgroundColor: AppUi.background,
     primaryIconTheme: lightThemeData.primaryIconTheme.copyWith(
       color: colorScheme.onSurface,
     ),
@@ -55,26 +77,23 @@ ThemeData light(
       actionsIconTheme: lightThemeData.iconTheme.copyWith(color: colorScheme.primary),
       titleTextStyle: lightThemeData.textTheme.titleLarge!.copyWith(fontSize: $(18), fontWeight: FontWeight.bold),
     ),
-    dividerColor: colorScheme.outline,
-    dividerTheme: DividerThemeData(color: colorScheme.outline, space: $(1)),
+    dividerColor: AppUi.border,
+    dividerTheme: DividerThemeData(color: AppUi.border, space: $(1)),
     popupMenuTheme: PopupMenuThemeData(color: colorScheme.surface),
-    textTheme: lightThemeData.textTheme.copyWith(
-      bodyMedium: lightThemeData.textTheme.bodyMedium!.copyWith(
+    textTheme: textTheme.copyWith(
+      bodyMedium: textTheme.bodyMedium!.copyWith(
         fontSize: $(14),
-        fontWeight: FontWeight.w500,
         color: colorScheme.onSurface,
-        fontFamily: 'MiSans',
       ),
     ),
+    primaryTextTheme: lightThemeData.primaryTextTheme.apply(fontFamily: fontFamily),
+    // 原来选中时滑块和轨道都是主色，看不出开关状态
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
         if (states.contains(WidgetState.disabled)) {
           return null;
         }
-        if (states.contains(WidgetState.selected)) {
-          return colorScheme.primary;
-        }
-        return null;
+        return Colors.white;
       }),
       trackColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
         if (states.contains(WidgetState.disabled)) {
@@ -83,7 +102,10 @@ ThemeData light(
         if (states.contains(WidgetState.selected)) {
           return colorScheme.primary;
         }
-        return null;
+        return const Color(0xffc9cdd4);
+      }),
+      trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+        return Colors.transparent;
       }),
     ),
     radioTheme: RadioThemeData(

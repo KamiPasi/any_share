@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:global_repository/global_repository.dart';
 
 import 'package:speed_share/common/common.dart';
 import 'package:speed_share/controllers/controllers.dart';
 import 'package:speed_share/routes/app_pages.dart';
 import 'package:speed_share/generated/l10n.dart';
+import 'package:speed_share/services/services.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/utils/lan_address.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
+import 'dialog/show_qr_page.dart';
 
+/// 宽窗口左边的侧栏：导航、设备列表和本机地址
 class DesktopDrawer extends StatefulWidget {
   const DesktopDrawer({
     Key? key,
@@ -23,29 +27,79 @@ class DesktopDrawer extends StatefulWidget {
 }
 
 class _DesktopDrawerState extends State<DesktopDrawer> {
-  ChatController chatController = Get.find();
-  late final colorScheme = Theme.of(context).colorScheme;
+  List<LanAddress> addresses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    lanAddresses().then((value) {
+      if (mounted) {
+        setState(() => addresses = value);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
+    final double width = MediaQuery.of(context).size.width < 900 ? 228 : 260;
+    return Container(
+      width: width,
+      decoration: const BoxDecoration(
+        color: AppUi.surface,
+        border: Border(right: BorderSide(color: AppUi.border)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              brand(),
+              const SizedBox(height: 20),
+              navItem(Icons.chat_bubble_outline_rounded, '消息', AppPages.home),
+              const SizedBox(height: 2),
+              navItem(Icons.tune_rounded, l10n.setting, AppPages.setting),
+              const SizedBox(height: 20),
+              Expanded(child: devices()),
+              const SizedBox(height: 12),
+              thisDevice(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget brand() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
-          Padding(
-            padding: EdgeInsets.all($(12)),
-            child: Row(
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppUi.accent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.share_rounded, size: 20, color: Colors.white),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                GetBuilder<DeviceController>(
-                  builder: (controller) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        homeMenu(),
-                        settingMenu(controller),
-                      ],
-                    );
-                  },
+                Text(
+                  '速享',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppUi.text, height: 1.3),
+                ),
+                Text(
+                  '局域网文件与文字互传',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: AppUi.textSecondary),
                 ),
               ],
             ),
@@ -55,26 +109,125 @@ class _DesktopDrawerState extends State<DesktopDrawer> {
     );
   }
 
-  Widget settingMenu(DeviceController controller) {
-    return DrawerItemv2(
-      groupValue: widget.value,
-      value: AppPages.setting,
-      onChange: (v) {
-        setState(() {});
-        widget.onChange?.call(v);
+  Widget navItem(IconData icon, String label, String value) {
+    final bool selected = widget.value == value;
+    final Color color = selected ? AppUi.accentText : AppUi.textMuted;
+    return Material(
+      color: selected ? AppUi.accentSoft : Colors.transparent,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => widget.onChange?.call(value),
+        child: SizedBox(
+          height: 44,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Icon(icon, size: 20, color: color),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget devices() {
+    return GetBuilder<DeviceController>(
+      builder: (deviceController) {
+        final List<Device> list = deviceController.connectDevice;
+        final int online = deviceController.availableDevice();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.device,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppUi.textSecondary),
+                    ),
+                  ),
+                  Text(
+                    '$online 台在线',
+                    style: TextStyle(fontSize: 12, color: online > 0 ? AppUi.onlineText : AppUi.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            if (list.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  '还没有设备连进来，连上的设备会显示在这里。',
+                  style: TextStyle(fontSize: 12, color: AppUi.textSecondary, height: 1.6),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: list.length,
+                  itemBuilder: (context, i) => deviceRow(list[i]),
+                ),
+              ),
+          ],
+        );
       },
+    );
+  }
+
+  Widget deviceRow(Device device) {
+    final bool alive = device.isAlive;
+    final String type = uiDeviceLabel(device.deviceType);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       child: Row(
         children: [
-          SvgPicture.asset(
-            SvgAssets.setting,
-            width: $(16),
-            color: colorScheme.onSurface,
-          ),
-          SizedBox(width: $(4)),
-          Text(
-            l10n.setting,
-            style: TextStyle(
-              color: colorScheme.onSurface,
+          UiDeviceAvatar(type: device.deviceType, dimmed: !alive),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  device.deviceName ?? type,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: alive ? AppUi.text : AppUi.textMuted,
+                  ),
+                ),
+                Row(
+                  children: [
+                    UiStatusDot(online: alive, size: 6),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        alive ? '在线 · $type' : '离线 · $type',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: alive ? AppUi.onlineText : AppUi.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -82,133 +235,74 @@ class _DesktopDrawerState extends State<DesktopDrawer> {
     );
   }
 
-  Widget homeMenu() {
-    return DrawerItemv2(
-      groupValue: widget.value,
-      value: AppPages.home,
-      onChange: (v) {
-        setState(() {});
-        widget.onChange?.call(v);
-      },
-      child: Row(
+  Widget thisDevice() {
+    final LanAddress? address = addresses.isEmpty ? null : addresses.first;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppUi.surfaceMuted,
+        border: Border.all(color: AppUi.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(
-            SvgAssets.message,
-            width: $(16),
-            color: colorScheme.onSurface,
+          Row(
+            children: [
+              const Icon(Icons.computer_rounded, size: 16, color: AppUi.textSecondary),
+              const SizedBox(width: 8),
+              Text(
+                GetPlatform.isDesktop ? '这台电脑' : '这台设备',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppUi.text),
+              ),
+            ],
           ),
-          SizedBox(width: $(4)),
-          Text(
-            l10n.home,
-            style: TextStyle(
-              color: colorScheme.onSurface,
+          const SizedBox(height: 8),
+          if (address == null)
+            const Text(
+              '没有找到局域网地址，先连上 Wi-Fi 或网线。',
+              style: TextStyle(fontSize: 12, color: AppUi.textSecondary, height: 1.5),
+            )
+          else ...[
+            SelectableText(
+              '${address.ip}:${ChatService.port}',
+              style: AppUi.mono(fontSize: 13),
             ),
+            const SizedBox(height: 2),
+            Text(
+              '${address.name} · 其他设备用这个地址连接',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppUi.textSecondary, height: 1.4),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: UiButton(
+                  label: '二维码',
+                  icon: Icons.qr_code_2_rounded,
+                  variant: UiButtonVariant.filled,
+                  dense: true,
+                  height: 36,
+                  onPressed: () => Get.dialog(ShowQRPage(port: ChatService.port)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: UiButton(
+                  label: '复制',
+                  icon: Icons.content_copy_rounded,
+                  dense: true,
+                  height: 36,
+                  onPressed: address == null ? null : () => uiCopy(address.url(ChatService.port)),
+                ),
+              ),
+            ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class DrawerItem extends StatelessWidget {
-  const DrawerItem({
-    Key? key,
-    this.groupValue,
-    this.value,
-    this.builder,
-    this.onChange,
-  }) : super(key: key);
-  final dynamic groupValue;
-  final dynamic value;
-  final WidgetBuilder? builder;
-  final void Function(int value)? onChange;
-  bool get enable => groupValue == value;
-  @override
-  Widget build(BuildContext context) {
-    final $ = context.$;
-    bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      onTap: () {
-        onChange?.call(value);
-      },
-      borderRadius: BorderRadius.circular($(8)),
-      child: Container(
-        width: $(200),
-        padding: EdgeInsets.symmetric(
-          horizontal: $(12),
-          vertical: $(12),
-        ),
-        decoration: BoxDecoration(
-          // TODO(lin): Check 0.11 opacity
-          color: enable ? Theme.of(context).primaryColor.withOpacityExact(0.11) : null,
-          borderRadius: BorderRadius.circular($(8)),
-        ),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            textTheme: TextTheme(
-              bodyMedium: TextStyle(
-                color: enable ? Theme.of(context).primaryColor : (isDark ? Colors.white : Colors.black),
-              ),
-            ),
-          ),
-          child: Builder(
-            builder: builder!,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class DrawerItemv2<T> extends StatefulWidget {
-  const DrawerItemv2({
-    required this.value,
-    required this.child,
-    this.groupValue,
-    this.onChange,
-    super.key,
-  });
-
-  final T value;
-  final T? groupValue;
-  final ValueChanged<T>? onChange;
-  final Widget child;
-
-  @override
-  State<DrawerItemv2<T>> createState() => _DrawerItemv2State<T>();
-}
-
-class _DrawerItemv2State<T> extends State<DrawerItemv2<T>> {
-  @override
-  Widget build(BuildContext context) {
-    final $ = context.$;
-    final isSelected = widget.value == widget.groupValue;
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: () {
-        widget.onChange?.call(widget.value);
-      },
-      borderRadius: BorderRadius.circular($(8)),
-      child: Container(
-        width: $(200),
-        padding: EdgeInsets.symmetric(
-          horizontal: $(12),
-          vertical: $(12),
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).primaryColor.withOpacityExact(0.11) : null,
-          borderRadius: BorderRadius.circular($(8)),
-        ),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            textTheme: TextTheme(
-              bodyMedium: TextStyle(
-                color: isSelected ? colorScheme.primary : colorScheme.onSurface.withOpacityExact(0.7),
-              ),
-            ),
-          ),
-          child: widget.child,
-        ),
       ),
     );
   }

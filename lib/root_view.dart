@@ -34,7 +34,8 @@ class RootView extends StatelessWidget {
             builder: (context) {
               double adaptWidth = 0;
               if (ResponsiveBreakpoints.of(context).isDesktop | ResponsiveBreakpoints.of(context).isTablet) {
-                adaptWidth = 896;
+                // 宽窗口不再按 896 缩放，老页面和新界面一样按 1:1 的逻辑像素显示
+                adaptWidth = MediaQuery.of(context).size.width;
               } else {
                 adaptWidth = 414;
               }

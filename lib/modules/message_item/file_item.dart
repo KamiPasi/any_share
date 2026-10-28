@@ -1,20 +1,18 @@
 import 'dart:io';
-import 'dart:math';
 
-import 'package:flutter/material.dart' hide Router;
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:get/get.dart' hide Response;
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:global_repository/global_repository.dart';
 
 import 'package:speed_share/modules/widget/icon.dart';
-import 'package:speed_share/generated/l10n.dart';
-import 'package:speed_share/themes/theme.dart';
 import 'package:speed_share/common/common.dart';
 import 'package:speed_share/controllers/controllers.dart';
 import 'package:speed_share/services/services.dart';
 import 'package:speed_share/models/models.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
 
 class FileItem extends StatefulWidget {
   /// 消息model
@@ -37,10 +35,6 @@ class _FileItemState extends State<FileItem> {
   SettingController settingController = Get.find();
   DownloadController downloadController = Get.find();
   FileMessage? info;
-
-  DateTime? startTime;
-  bool isStarted = false;
-  // 执行下载文件
 
   @override
   void initState() {
@@ -84,329 +78,171 @@ class _FileItemState extends State<FileItem> {
     return url;
   }
 
-  Offset? offset;
+  Future<void> download() async {
+    if (GetPlatform.isWeb) {
+      Log.e('web download $url');
+      await canLaunchUrlString(url) ? await launchUrlString('$url?download=true') : throw 'Could not launch $url';
+      return;
+    }
+    if (GetPlatform.isDesktop) {
+      final dir = settingController.savePath;
+      Log.e(' -> $url');
+      downloadController.downloadFile(url, dir);
+    } else {
+      Directory dataDir = Directory('/sdcard/SpeedShare');
+      if (!dataDir.existsSync()) {
+        dataDir.createSync();
+      }
+      downloadController.downloadFile(
+        url,
+        '/sdcard/SpeedShare',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool mine = widget.sendByUser!;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: widget.sendByUser! ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
-        Material(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular($(10)),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onLongPress: () {
-              Get.dialog(
-                Menu(
-                  offset: offset,
-                  info: widget.info,
-                ),
-                useSafeArea: false,
-                barrierColor: Colors.black12,
-              );
-            },
-            onTap: () {
-              // 打开文件
-              // OpenFile.open(widget.info.path);
-            },
-            child: GestureDetector(
-              onTapDown: (details) {
-                offset = details.globalPosition;
-              },
+        Flexible(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: UiBubble(
+              sendByUser: mine,
+              padding: const EdgeInsets.all(12),
               child: body(context),
             ),
           ),
         ),
-        // 展示下载按钮
-        if (!widget.sendByUser!)
-          Material(
-            color: Colors.transparent,
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () async {
-                    if (GetPlatform.isWeb) {
-                      Log.e('web download $url');
-                      await canLaunchUrlString(url) ? await launchUrlString('$url?download=true') : throw 'Could not launch $url';
-                      return;
-                    }
-                    if (GetPlatform.isDesktop) {
-                      final dir = settingController.savePath;
-                      Log.e(' -> $url');
-                      downloadController.downloadFile(url, dir);
-                    } else {
-                      Directory dataDir = Directory('/sdcard/SpeedShare');
-                      if (!dataDir.existsSync()) {
-                        dataDir.createSync();
-                      }
-                      downloadController.downloadFile(
-                        url,
-                        '/sdcard/SpeedShare',
-                      );
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.file_download,
-                      size: $(18),
-                    ),
-                  ),
-                ),
-                InkWell(
-                  onTap: () async {
-                    showToast(l10n.copyed);
-                    await Clipboard.setData(ClipboardData(text: url));
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.content_copy,
-                      size: $(18),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
       ],
     );
   }
 
-  Padding body(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all($(10)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: $(200)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget body(BuildContext context) {
+    final bool mine = widget.sendByUser!;
+    // 展示下载进度
+    final bool showProgress = !mine && !GetPlatform.isWeb;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Builder(
-              builder: (context) {
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    // if (fileDownratio == 1.0 && !timer.isActive) {
-                    //   OpenFile.open(savePath);
-                    // }
-                  },
-                  child: buildPreviewWidget(url),
-                );
-              },
+            UiFileBadge(
+              highlighted: mine,
+              child: getIconByExt(url, context),
             ),
-            // 展示下载进度条
-            if (!widget.sendByUser! && !GetPlatform.isWeb)
-              GetBuilder<DownloadController>(
-                builder: (context) {
-                  DownloadInfo info = downloadController.getInfo(url)!;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      SizedBox(
-                        height: $(8),
-                      ),
-                      ClipRRect(
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(25.0),
-                        ),
-                        child: Builder(
-                          builder: (context) {
-                            double pro = info.progress;
-                            return LinearProgressIndicator(
-                              // TODO: Remove surface3
-                              backgroundColor: Theme.of(context).colorScheme.surface3,
-                              valueColor: AlwaysStoppedAnimation(
-                                pro == 1.0 ? Theme.of(context).primaryColor : Theme.of(context).primaryColor.withOpacity(0.4),
-                              ),
-                              value: pro,
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: $(4),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Builder(
-                            builder: (_) {
-                              double pro = downloadController.getProgress(url);
-                              if (pro == 1.0) {
-                                return Icon(
-                                  Icons.check,
-                                  size: $(16),
-                                  color: Colors.green,
-                                );
-                              }
-                              return Text(
-                                '${info.speed}/s',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: $(12),
-                                ),
-                              );
-                            },
-                          ),
-                          Row(
-                            children: [
-                              SizedBox(
-                                child: Text(
-                                  FileUtil.formatBytes(info.count),
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: $(12),
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                '/',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: $(12),
-                                ),
-                              ),
-                              SizedBox(
-                                child: Text(
-                                  widget.info!.fileSize!,
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: $(12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.info!.fileName!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppUi.text, height: 1.35),
+                  ),
+                  const SizedBox(height: 2),
+                  if (showProgress)
+                    GetBuilder<DownloadController>(
+                      builder: (_) => downloadStatus(),
+                    )
+                  else
+                    Text(
+                      widget.info!.fileSize ?? '',
+                      style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
-      ),
+        if (showProgress)
+          GetBuilder<DownloadController>(
+            builder: (_) => downloadProgress(),
+          ),
+        // 别的设备发来的文件才有下载按钮
+        if (!mine) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              UiButton(
+                label: '下载',
+                icon: Icons.download_rounded,
+                variant: UiButtonVariant.soft,
+                dense: true,
+                height: 34,
+                onPressed: download,
+              ),
+              const SizedBox(width: 8),
+              UiButton(
+                label: '复制链接',
+                icon: Icons.link_rounded,
+                dense: true,
+                height: 34,
+                onPressed: () => uiCopy(url),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 
-  UniqueKey key = UniqueKey();
-  Widget buildPreviewWidget(String url) {
-    return InkWell(
-      child: Row(
+  Widget downloadStatus() {
+    final DownloadInfo info = downloadController.getInfo(url)!;
+    final double progress = info.progress;
+    final String size = widget.info!.fileSize ?? '';
+    if (progress >= 1.0) {
+      return Row(
         children: [
-          getIconByExt(url, context),
-          SizedBox(width: $(8)),
-          Expanded(
+          const Icon(Icons.check_rounded, size: 14, color: AppUi.onlineText),
+          const SizedBox(width: 4),
+          Flexible(
             child: Text(
-              widget.info!.fileName!,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: $(12),
-              ),
+              '已下载 · $size',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: AppUi.onlineText),
             ),
           ),
         ],
-      ),
+      );
+    }
+    if (progress > 0) {
+      return Text(
+        '${FileUtil.formatBytes(info.count)} / $size · ${info.speed}/s',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
+      );
+    }
+    return Text(
+      size,
+      style: const TextStyle(fontSize: 12, color: AppUi.textSecondary),
     );
   }
-}
 
-class Menu extends StatefulWidget {
-  const Menu({Key? key, this.offset, this.info}) : super(key: key);
-  final Offset? offset;
-
-  /// 消息model
-  final FileMessage? info;
-
-  @override
-  State<Menu> createState() => _MenuState();
-}
-
-class _MenuState extends State<Menu> {
-  Future<int> server(String? path) async {
-    // TODO: Reimplement server logic here, the previous implementation is commented out below
-    // final app = Router();
-    int singlePort = Random().nextInt(10000) + 10000;
-    // Log.i(singlePort);
-    // int? port = Get.find<ChatController>().shelfBindPort;
-    // app.get('/', (Request request) {
-    //   corsHeader[HttpHeaders.contentTypeHeader] = ContentType.html.toString();
-    //   return Response.ok(
-    //     singleFileDownloadHtml
-    //         .replaceAll('placeholder3', ":$port$path")
-    //         .replaceAll(
-    //           'placeholder2',
-    //           FileUtil.formatBytes(File(path!).lengthSync()),
-    //         )
-    //         .replaceAll('placeholder1', p.basename(path)),
-    //     headers: corsHeader,
-    //   );
-    // });
-    // app.get('/icon.png', (Request request) async {
-    //   corsHeader[HttpHeaders.contentTypeHeader] = 'image/png';
-    //   final ByteData byteData = await rootBundle.load(
-    //     '${Config.flutterPackage}assets/icon/${getIconFromPath(path!)}.png',
-    //   );
-    //   final Uint8List picBytes = byteData.buffer.asUint8List();
-    //   return Response.ok(
-    //     picBytes,
-    //     headers: corsHeader,
-    //   );
-    // });
-    // io.serve(
-    //   app,
-    //   InternetAddress.anyIPv4,
-    //   singlePort,
-    //   shared: true,
-    // );
-    return singlePort;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          top: widget.offset!.dy,
-          left: min(widget.offset!.dx, MediaQuery.of(context).size.width - $(120)),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              clipBehavior: Clip.antiAlias,
-              borderRadius: BorderRadius.circular($(10)),
-              child: SizedBox(
-                width: $(120),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      onTap: () async {
-                        // int port = await server(widget.info!.filePath);
-                        // Get.back();
-                        // Get.dialog(
-                        //   ShowQRPage(
-                        //     port: port,
-                        //   ),
-                        // );
-                      },
-                      child: SizedBox(
-                        height: $(40),
-                        child: Center(
-                          child: Text(l10n.fileQRCode),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+  Widget downloadProgress() {
+    final double progress = downloadController.getProgress(url);
+    if (progress <= 0 || progress >= 1.0) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: LinearProgressIndicator(
+          value: progress,
+          minHeight: 4,
+          backgroundColor: AppUi.segment,
+          color: AppUi.accent,
         ),
-      ],
+      ),
     );
   }
 }

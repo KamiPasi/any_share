@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:image_picker/image_picker.dart';
 import 'package:responsive_framework/responsive_framework.dart';
@@ -16,9 +15,11 @@ import 'package:speed_share/modules/widget/menu.dart';
 import 'package:speed_share/services/services.dart';
 import 'package:speed_share/utils/utils.dart';
 import 'package:speed_share/generated/l10n.dart';
-import 'package:speed_share/themes/theme.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
+import 'dialog/join_chat.dart';
 import 'dialog/show_qr_page.dart';
-import 'widget/gesture.dart';
+import 'widget/connect_guide.dart';
 
 // 聊天窗口
 class ShareChatV2 extends StatefulWidget {
@@ -32,8 +33,8 @@ class ShareChatV2 extends StatefulWidget {
 
 class _ShareChatV2State extends State<ShareChatV2> with SingleTickerProviderStateMixin {
   ChatController chatController = Get.find();
+  // 附件菜单（图片、视频、文件、文件夹）的展开动画
   late AnimationController menuAnim;
-  int index = 0;
   // 输入框控制器
   TextEditingController editingController = TextEditingController();
   FocusNode focusNode = FocusNode();
@@ -45,13 +46,13 @@ class _ShareChatV2State extends State<ShareChatV2> with SingleTickerProviderStat
   void initState() {
     super.initState();
     editingController.addListener(() {
-      // 这个监听主要是为了改变发送按钮为+号按钮
-      if (editingController.text.isNotEmpty) {
-        hasInput = true;
-      } else {
-        hasInput = false;
+      // 输入框有内容时发送按钮才可用
+      final bool value = editingController.text.isNotEmpty;
+      if (value != hasInput) {
+        setState(() {
+          hasInput = value;
+        });
       }
-      setState(() {});
     });
     // 这里是shift+enter可以是实现换行的逻辑
     focusNode.onKeyEvent = (_, event) {
@@ -69,719 +70,579 @@ class _ShareChatV2State extends State<ShareChatV2> with SingleTickerProviderStat
     };
     menuAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
+      duration: const Duration(milliseconds: 160),
     );
   }
 
   @override
   void dispose() {
     menuAnim.dispose();
+    editingController.dispose();
+    focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = ResponsiveBreakpoints.of(context).isMobile;
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: AppUi.background,
       body: SafeArea(
         left: false,
         child: Column(
           children: [
-            // 宽窗口也要显示：显示二维码和「输入连接」只有这一个入口
-            appbar(context),
-            Expanded(
-              child: Row(
-                children: [
-                  if (ResponsiveBreakpoints.of(context).isMobile) leftNav(),
-                  chatBody(context),
-                ],
-              ),
-            ),
+            if (isMobile) mobileHeader(context) else desktopHeader(context),
+            Expanded(child: messageArea()),
+            composer(isMobile),
           ],
         ),
       ),
     );
   }
 
-  Expanded chatBody(BuildContext context) {
-    return Expanded(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: $(0)),
-        child: Column(
-          children: [
-            Expanded(child: chatList(context)),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Material(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: $(64), maxHeight: $(246)),
-                  child: sendMsgContainer(context),
+  void showQrCode() {
+    Get.dialog(ShowQRPage(port: ChatService.port));
+  }
+
+  void showJoinDialog() {
+    Get.dialog(const JoinChat());
+  }
+
+  void showMoreMenu(BuildContext context) {
+    Get.dialog(
+      HeaderMenu(
+        offset: Offset(MediaQuery.of(context).size.width, 64),
+      ),
+    );
+  }
+
+  Widget onlineSummary({required bool compact}) {
+    return GetBuilder<DeviceController>(
+      builder: (deviceController) {
+        final int online = deviceController.availableDevice();
+        String text = '还没有设备在线';
+        if (online > 0) {
+          text = compact ? '$online 台设备在线' : '$online 台设备在线，消息和文件会发给所有在线设备';
+        }
+        return Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: compact ? 12 : 13,
+            color: online > 0 && compact ? AppUi.onlineText : AppUi.textSecondary,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget desktopHeader(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: const BoxDecoration(
+        color: AppUi.surface,
+        border: Border(bottom: BorderSide(color: AppUi.border)),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 窗口比较窄时按钮只留图标
+          final bool compact = constraints.maxWidth < 620;
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n.allDevices,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppUi.text, height: 1.4),
+                    ),
+                    onlineSummary(compact: false),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              if (compact) ...[
+                UiIconButton(
+                  icon: Icons.qr_code_2_rounded,
+                  tooltip: '显示本机二维码',
+                  outlined: true,
+                  onPressed: showQrCode,
+                ),
+                const SizedBox(width: 8),
+                UiIconButton(
+                  icon: Icons.link_rounded,
+                  tooltip: '输入地址连接',
+                  outlined: true,
+                  onPressed: showJoinDialog,
+                ),
+              ] else ...[
+                UiButton(
+                  label: '二维码',
+                  icon: Icons.qr_code_2_rounded,
+                  onPressed: showQrCode,
+                ),
+                const SizedBox(width: 8),
+                UiButton(
+                  label: '输入地址连接',
+                  icon: Icons.link_rounded,
+                  onPressed: showJoinDialog,
+                ),
+              ],
+              const SizedBox(width: 8),
+              UiIconButton(
+                icon: Icons.more_vert_rounded,
+                tooltip: '更多',
+                outlined: true,
+                onPressed: () => showMoreMenu(context),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  GestureDetector chatList(BuildContext context) {
+  Widget mobileHeader(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppUi.surface,
+        border: Border(bottom: BorderSide(color: AppUi.border)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        l10n.allDevices,
+                        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600, color: AppUi.text, height: 1.35),
+                      ),
+                      onlineSummary(compact: true),
+                    ],
+                  ),
+                ),
+                if (ScanUtil.isSupported)
+                  UiIconButton(
+                    icon: Icons.qr_code_scanner_rounded,
+                    tooltip: l10n.scan,
+                    size: 44,
+                    iconSize: 22,
+                    onPressed: ScanUtil.parseScan,
+                  ),
+                UiIconButton(
+                  icon: Icons.qr_code_2_rounded,
+                  tooltip: '显示本机二维码',
+                  size: 44,
+                  iconSize: 22,
+                  onPressed: showQrCode,
+                ),
+                UiIconButton(
+                  icon: Icons.more_vert_rounded,
+                  tooltip: '更多',
+                  size: 44,
+                  iconSize: 22,
+                  onPressed: () => showMoreMenu(context),
+                ),
+              ],
+            ),
+          ),
+          const _DeviceStrip(),
+        ],
+      ),
+    );
+  }
+
+  Widget messageArea() {
     return GestureDetector(
       onTap: () {
         focusNode.unfocus();
       },
-      child: Material(
-        borderRadius: BorderRadius.circular($(10)),
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        clipBehavior: Clip.antiAlias,
-        child: GetBuilder<ChatController>(
-          builder: (context) {
-            List<Widget?> children = [];
-            if (chatController.backup.isNotEmpty) {
-              children = chatController.backup;
-            } else {
-              children = chatController.messageItems;
-            }
-            return ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB($(0), $(0), $(0), $(80)),
-              controller: chatController.scrollController,
-              itemCount: children.length,
-              cacheExtent: 99999,
-              itemBuilder: (c, i) {
-                return (children)[i];
-              },
-            );
-          },
-        ),
+      child: GetBuilder<DeviceController>(
+        builder: (deviceController) {
+          return GetBuilder<ChatController>(
+            builder: (_) {
+              List<Widget?> children = [];
+              if (chatController.backup.isNotEmpty) {
+                children = chatController.backup;
+              } else {
+                children = chatController.messageItems;
+              }
+              if (children.isEmpty) {
+                final int online = deviceController.availableDevice();
+                if (online == 0) {
+                  return const ConnectGuide();
+                }
+                return emptyHint(online);
+              }
+              return ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                controller: chatController.scrollController,
+                itemCount: children.length,
+                cacheExtent: 99999,
+                itemBuilder: (c, i) {
+                  return children[i];
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
 
-  SizedBox leftNav() {
-    return SizedBox(
-      width: $(64),
-      child: Material(
+  Widget emptyHint(int online) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(height: $(4)),
-            LeftNav(value: index),
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppUi.accentSoft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.forum_outlined, color: AppUi.accentText),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '已连上 $online 台设备',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppUi.text),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              GetPlatform.isDesktop ? '发条消息，或者把文件拖进窗口试试' : '发条消息，或者点左下角的加号发文件',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 13, color: AppUi.textSecondary),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget appbar(BuildContext context) {
+  void sendText() {
+    if (editingController.text.isEmpty) {
+      return;
+    }
+    chatController.sendTextMessage(editingController.text);
+    editingController.clear();
+  }
+
+  void toggleAttachMenu() {
+    if (menuAnim.status == AnimationStatus.completed || menuAnim.status == AnimationStatus.forward) {
+      menuAnim.reverse();
+    } else {
+      menuAnim.forward();
+    }
+  }
+
+  Widget composer(bool isMobile) {
+    final double side = isMobile ? 12 : 24;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: $(12)),
-      child: Material(
-        color: colorScheme.surface,
-        child: SizedBox(
-          height: $(48),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.allDevices,
-                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                  fontWeight: bold,
-                  fontSize: $(16),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (ScanUtil.isSupported)
-                    NiIconButton(
-                      onTap: () {
-                        ScanUtil.parseScan();
-                      },
-                      child: SvgPicture.asset(
-                        SvgAssets.qrCodeScan,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        width: $(24),
-                      ),
-                    ),
-                  NiIconButton(
-                    onTap: () {
-                      Get.dialog(
-                        ShowQRPage(port: ChatService.port),
-                      );
-                    },
-                    child: SvgPicture.asset(
-                      SvgAssets.qrCode,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      width: $(24),
-                    ),
-                    // child: Image.asset(
-                    //   'assets/icon/qr.png',
-                    //   width: $(20),
-                    //   package: Config.package,
-                    //   color: Theme.of(context).colorScheme.onSurface,
-                    // ),
-                  ),
-                  NiIconButton(
-                    onTap: () {
-                      Get.dialog(
-                        HeaderMenu(
-                          offset: Offset(MediaQuery.of(context).size.width, 40),
-                        ),
-                      );
-                    },
-                    child: SvgPicture.asset(
-                      SvgAssets.ellipsisVertical,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      width: $(24),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget menu() {
-    return AnimatedBuilder(
-      animation: menuAnim,
-      builder: (c, child) {
-        return SizedBox(
-          height: $(100) * menuAnim.value,
-          child: child,
-        );
-      },
-      child: SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: $(16)),
-        physics: const NeverScrollableScrollPhysics(),
-        child: Wrap(
-          children: [
-            SizedBox(
-              width: $(80),
-              height: $(80),
-              child: InkWell(
-                borderRadius: BorderRadius.circular($(10)),
-                onTap: () {
-                  menuAnim.reverse();
-                  Future.delayed(const Duration(milliseconds: 100), () async {
-                    final ImagePicker picker = ImagePicker();
-                    final List<XFile> photos = await picker.pickMultiImage();
-                    for (var photo in photos) {
-                      chatController.sendFileMessageByPath(photo.path);
-                    }
-                  });
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      SvgAssets.img,
-                      width: $(36),
-                      height: $(36),
-                      color: Theme.of(context).primaryColor,
-                      package: Config.package,
-                    ),
-                    SizedBox(height: $(4)),
-                    Text(
-                      '图片',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: bold,
-                        fontSize: $(12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      padding: EdgeInsets.fromLTRB(side, 8, side, isMobile ? 10 : 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          attachMenu(),
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: AppUi.surface,
+              border: Border.all(color: AppUi.borderStrong),
+              borderRadius: BorderRadius.circular(isMobile ? 27 : 14),
             ),
-            SizedBox(
-              width: $(80),
-              height: $(80),
-              child: InkWell(
-                borderRadius: BorderRadius.circular($(10)),
-                onTap: () {
-                  menuAnim.reverse();
-                  Future.delayed(const Duration(milliseconds: 100), () async {
-                    final ImagePicker picker = ImagePicker();
-                    final List<XFile> videos = await picker.pickMultiVideo();
-                    for (var video in videos) {
-                      chatController.sendFileMessageByPath(video.path);
-                    }
-                  });
-                },
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset(
-                      SvgAssets.video,
-                      width: $(36),
-                      height: $(36),
-                      color: Theme.of(context).primaryColor,
-                      package: Config.package,
-                    ),
-                    SizedBox(height: $(4)),
-                    Text(
-                      '视频',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: bold,
-                        fontSize: $(12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(
-              width: $(80),
-              height: $(80),
-              child: InkWell(
-                borderRadius: BorderRadius.circular($(10)),
-                onTap: () {
-                  menuAnim.reverse();
-                  Future.delayed(const Duration(milliseconds: 100), () async {
-                    if (GetPlatform.isDesktop || GetPlatform.isWeb) {
-                      List<XFile>? files = await getFilesForDesktopAndWeb();
-                      if (files == null) {
-                        return;
-                      }
-                      chatController.sendFileMessageByXFiles(files);
-                    } else if (GetPlatform.isAndroid) {
-                      // 选择文件路径
-                      List<String?> filePaths = await getFilesPathsForAndroid(true);
-                      Log.i('filePaths -> $filePaths');
-                      if (filePaths.isEmpty) {
-                        return;
-                      }
-                      for (String? filePath in filePaths) {
-                        Log.v(filePath);
-                        if (filePath == null) {
-                          return;
-                        }
-                        chatController.sendFileMessageByPath(filePath);
-                      }
-                    }
-                  });
-                },
-                child: Tooltip(
-                  message: l10n.systemManagerTips,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SvgPicture.asset(
-                        SvgAssets.file,
-                        width: $(36),
-                        height: $(36),
-                        color: Theme.of(context).primaryColor,
-                        package: Config.package,
-                      ),
-                      SizedBox(height: $(4)),
-                      Text(
-                        '文件',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: bold,
-                          fontSize: $(12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: $(80),
-              height: $(80),
-              child: InkWell(
-                borderRadius: BorderRadius.circular($(10)),
-                onTap: () {
-                  menuAnim.reverse();
-                  Future.delayed(const Duration(milliseconds: 100), () async {
-                    String? dirPath;
-                    if (GetPlatform.isDesktop) {
-                      dirPath = await getDirectoryPath(confirmButtonText: l10n.select);
-                    } else {
-                      dirPath = await file_manager.FileManager.selectDirectory();
-                    }
-                    Log.d('dirPath -> $dirPath');
-                    if (dirPath == null) {
-                      return;
-                    }
-                    chatController.sendDirMessageByPath(dirPath);
-                  });
-                },
-                child: Tooltip(
-                  message: l10n.systemManagerTips,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SvgPicture.asset(
-                        SvgAssets.dir,
-                        width: $(36),
-                        height: $(36),
-                        color: Theme.of(context).primaryColor,
-                        package: Config.package,
-                      ),
-                      SizedBox(height: $(4)),
-                      Text(
-                        '文件夹',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: bold,
-                          fontSize: $(12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget sendMsgContainer(BuildContext context) {
-    return GetBuilder<ChatController>(
-      builder: (ctl) {
-        return Material(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular($(12)),
-            topRight: Radius.circular($(12)),
-          ),
-          color: colorScheme.surface,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB($(0), $(8), $(8), 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular($(12)),
-                        ),
-                        width: double.infinity,
-                        child: Center(
-                          child: GetBuilder<ChatController>(
-                            builder: (_) {
-                              return TextField(
-                                focusNode: focusNode,
-                                controller: editingController,
-                                autofocus: false,
-                                maxLines: 8,
-                                minLines: 1,
-                                keyboardType: GetPlatform.isDesktop ? TextInputType.text : TextInputType.multiline,
-                                decoration: InputDecoration(
-                                  hintText: l10n.chatInputHint,
-                                ),
-                                onSubmitted: (_) {
-                                  if (inputMultiline) {
-                                    // 如果切换到多行模式，按下回车仅仅是换行，不发送消息
-                                    editingController.value = TextEditingValue(
-                                      text: '${editingController.text}\n',
-                                      // Below is history code, unused now.
-                                      // selection: TextSelection.collapsed(
-                                      //   offset: editingController.selection.end + 1,
-                                      // ),
-                                    );
-                                    focusNode.requestFocus();
-                                    return;
-                                  }
-                                  chatController.sendTextMessage(editingController.text);
-                                  editingController.clear();
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: $(8)),
-                    GestureWithScale(
-                      onTap: () {
-                        if (hasInput) {
-                          chatController.sendTextMessage(editingController.text);
-                          editingController.clear();
-                        } else {
-                          if (menuAnim.isCompleted) {
-                            menuAnim.reverse();
-                          } else {
-                            menuAnim.forward();
-                          }
-                        }
-                      },
-                      child: Material(
-                        borderRadius: BorderRadius.circular($(24)),
-                        // borderOnForeground: true,
-                        color: Theme.of(context).colorScheme.surfaceContainer,
-                        child: SizedBox(
-                          width: $(46),
-                          height: $(46),
-                          child: AnimatedBuilder(
-                            animation: menuAnim,
-                            builder: (c, child) {
-                              return Transform(
-                                alignment: Alignment.center,
-                                transform: Matrix4.identity()..rotateZ(menuAnim.value * pi / 4),
-                                child: child,
-                              );
-                            },
-                            child: Icon(
-                              // TODO: Use custom icons
-                              hasInput ? Icons.send : Icons.add,
-                              size: $(20),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: $(4)),
-                  ],
-                ),
-                SizedBox(height: $(4)),
-                menu(),
+                attachButton(isMobile),
+                const SizedBox(width: 6),
+                Expanded(child: inputField(isMobile)),
+                const SizedBox(width: 6),
+                sendButton(isMobile),
               ],
             ),
           ),
-        );
+          if (!isMobile)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(4, 6, 4, 0),
+              child: Text(
+                '也可以直接把文件或文件夹拖进窗口发送',
+                style: TextStyle(fontSize: 12, color: AppUi.textSecondary),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget attachButton(bool isMobile) {
+    final BorderRadius radius = BorderRadius.circular(isMobile ? 22 : 10);
+    return Tooltip(
+      message: '发送图片、视频、文件或文件夹',
+      child: Material(
+        color: AppUi.subtle,
+        borderRadius: radius,
+        child: InkWell(
+          borderRadius: radius,
+          onTap: toggleAttachMenu,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: AnimatedBuilder(
+              animation: menuAnim,
+              builder: (c, child) {
+                return Transform.rotate(
+                  angle: menuAnim.value * pi / 4,
+                  child: child,
+                );
+              },
+              child: const Icon(Icons.add_rounded, size: 22, color: AppUi.text),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget inputField(bool isMobile) {
+    return TextField(
+      focusNode: focusNode,
+      controller: editingController,
+      autofocus: false,
+      maxLines: 8,
+      minLines: 1,
+      keyboardType: GetPlatform.isDesktop ? TextInputType.text : TextInputType.multiline,
+      style: const TextStyle(fontSize: 14.5, color: AppUi.text, height: 1.45),
+      decoration: InputDecoration(
+        hintText: isMobile ? '输入消息' : '输入消息，Enter 发送，Shift + Enter 换行',
+        hintStyle: const TextStyle(fontSize: 14.5, color: AppUi.placeholder),
+        filled: false,
+        isDense: true,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+      ),
+      onSubmitted: (_) {
+        if (inputMultiline) {
+          // 如果切换到多行模式，按下回车仅仅是换行，不发送消息
+          editingController.value = TextEditingValue(
+            text: '${editingController.text}\n',
+          );
+          focusNode.requestFocus();
+          return;
+        }
+        sendText();
+        // 发完焦点留在输入框里，可以接着打字
+        focusNode.requestFocus();
       },
     );
   }
-}
 
-class LeftNav extends StatefulWidget {
-  const LeftNav({
-    Key? key,
-    this.value,
-  }) : super(key: key);
-  final int? value;
+  Widget sendButton(bool isMobile) {
+    if (isMobile) {
+      return Material(
+        color: hasInput ? AppUi.accent : AppUi.subtle,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: hasInput ? sendText : null,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              Icons.send_rounded,
+              size: 20,
+              color: hasInput ? Colors.white : AppUi.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+    return UiButton(
+      label: '发送',
+      icon: Icons.send_rounded,
+      variant: UiButtonVariant.filled,
+      height: 44,
+      onPressed: hasInput ? sendText : null,
+    );
+  }
 
-  @override
-  State<LeftNav> createState() => _LeftNavState();
-}
-
-class _LeftNavState extends State<LeftNav> with SingleTickerProviderStateMixin {
-  DeviceController deviceController = Get.find();
-  ChatController chatController = Get.find();
-  late AnimationController controller;
-  late Animation offset;
-  int? index;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(
-        milliseconds: 100,
+  Widget attachMenu() {
+    return SizeTransition(
+      sizeFactor: menuAnim,
+      axisAlignment: -1,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            attachTile(Icons.image_outlined, '图片', pickImages),
+            attachTile(Icons.movie_outlined, '视频', pickVideos),
+            Tooltip(
+              message: l10n.systemManagerTips,
+              child: attachTile(Icons.insert_drive_file_outlined, '文件', pickFiles),
+            ),
+            Tooltip(
+              message: l10n.systemManagerTips,
+              child: attachTile(Icons.folder_outlined, '文件夹', pickDirectory),
+            ),
+          ],
+        ),
       ),
     );
-    offset = Tween<double>(begin: 0, end: 0).animate(controller);
-    index = widget.value;
   }
 
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Padding(
-          padding: EdgeInsets.only(left: $(10)),
+  Widget attachTile(IconData icon, String label, Future<void> Function() action) {
+    return Material(
+      color: AppUi.surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppUi.border),
+      ),
+      child: InkWell(
+        onTap: () {
+          menuAnim.reverse();
+          Future.delayed(const Duration(milliseconds: 100), action);
+        },
+        child: SizedBox(
+          width: 84,
+          height: 72,
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedBuilder(
-                animation: controller,
-                builder: (context, c) {
-                  return SizedBox(
-                    height: offset.value,
-                  );
-                },
-              ),
-              Stack(
-                children: [
-                  Material(
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                    child: SizedBox(
-                      height: $(10),
-                      width: $(64),
-                    ),
-                  ),
-                  Material(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.only(
-                      bottomRight: Radius.circular($(12)),
-                    ),
-                    child: SizedBox(
-                      height: $(10),
-                      width: $(64),
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                height: $(48),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainer,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular($(12)),
-                    bottomLeft: Radius.circular($(12)),
-                  ),
-                ),
-              ),
-              Stack(
-                children: [
-                  Material(
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                    child: SizedBox(
-                      height: $(10),
-                      width: $(60),
-                    ),
-                  ),
-                  Material(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular($(12)),
-                    ),
-                    child: SizedBox(
-                      height: $(10),
-                      width: $(60),
-                    ),
-                  ),
-                ],
+              Icon(icon, size: 24, color: AppUi.accent),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: AppUi.text),
               ),
             ],
           ),
         ),
-        Column(
-          children: [
-            SizedBox(
-              height: $(10),
-            ),
-            MenuButton(
-              value: 0,
-              enable: index == 0,
-              child: SvgPicture.asset(
-                SvgAssets.message,
-                width: $(36),
-                height: $(36),
-                color: Theme.of(context).primaryColor,
-                package: Config.package,
-              ),
-              onChange: (value) {
-                index = value;
-                offset = Tween<double>(begin: offset.value, end: $(0)).animate(controller);
-                chatController.restoreList();
-                controller.reset();
-                controller.forward();
-                setState(() {});
-              },
-            ),
-            GetBuilder<DeviceController>(
-              builder: (_) {
-                return Column(
-                  children: [
-                    for (int i = 0; i < deviceController.connectDevice.length; i++)
-                      MenuButton(
-                        value: i + 1,
-                        enable: index == i + 1,
-                        child: SvgPicture.asset(
-                          deviceController.connectDevice[i].deviceType!.iconPath,
-                          width: $(32),
-                          height: $(32),
-                          package: Config.package,
-                          color: colorScheme.onSurface,
-                        ),
-                        onChange: (value) {
-                          index = value;
-                          offset = Tween<double>(
-                            begin: offset.value,
-                            end: (i + 1) * $(60),
-                          ).animate(controller);
-                          controller.reset();
-                          controller.forward();
-                          chatController.changeListToDevice(deviceController.connectDevice[i]);
-                          setState(() {});
-                        },
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ],
+      ),
     );
+  }
+
+  Future<void> pickImages() async {
+    final ImagePicker picker = ImagePicker();
+    final List<XFile> photos = await picker.pickMultiImage();
+    for (var photo in photos) {
+      chatController.sendFileMessageByPath(photo.path);
+    }
+  }
+
+  Future<void> pickVideos() async {
+    final ImagePicker picker = ImagePicker();
+    final List<XFile> videos = await picker.pickMultiVideo();
+    for (var video in videos) {
+      chatController.sendFileMessageByPath(video.path);
+    }
+  }
+
+  Future<void> pickFiles() async {
+    if (GetPlatform.isDesktop || GetPlatform.isWeb) {
+      List<XFile>? files = await getFilesForDesktopAndWeb();
+      if (files == null) {
+        return;
+      }
+      chatController.sendFileMessageByXFiles(files);
+    } else if (GetPlatform.isAndroid) {
+      // 选择文件路径
+      List<String?> filePaths = await getFilesPathsForAndroid(true);
+      Log.i('filePaths -> $filePaths');
+      if (filePaths.isEmpty) {
+        return;
+      }
+      for (String? filePath in filePaths) {
+        Log.v(filePath);
+        if (filePath == null) {
+          return;
+        }
+        chatController.sendFileMessageByPath(filePath);
+      }
+    }
+  }
+
+  Future<void> pickDirectory() async {
+    String? dirPath;
+    if (GetPlatform.isDesktop) {
+      dirPath = await getDirectoryPath(confirmButtonText: l10n.select);
+    } else {
+      dirPath = await file_manager.FileManager.selectDirectory();
+    }
+    Log.d('dirPath -> $dirPath');
+    if (dirPath == null) {
+      return;
+    }
+    chatController.sendDirMessageByPath(dirPath);
   }
 }
 
-class MenuButton extends StatelessWidget {
-  const MenuButton({
-    Key? key,
-    this.enable = true,
-    this.value,
-    this.onChange,
-    this.child,
-  }) : super(key: key);
-  final bool enable;
-  final int? value;
-  final void Function(int? index)? onChange;
-  final Widget? child;
+/// 手机布局里显示已连接设备的一排标签
+class _DeviceStrip extends StatelessWidget {
+  const _DeviceStrip();
 
   @override
   Widget build(BuildContext context) {
-    final $ = context.$;
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () {
-            onChange?.call(value);
-          },
-          child: SizedBox(
-            width: $(60),
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: $(10),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular($(10)),
-                  bottomLeft: Radius.circular($(10)),
+    return GetBuilder<DeviceController>(
+      builder: (deviceController) {
+        final List<Device> devices = deviceController.connectDevice;
+        if (devices.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return SizedBox(
+          height: 44,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            itemCount: devices.length,
+            separatorBuilder: (context, i) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              final Device device = devices[i];
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppUi.surface,
+                  border: Border.all(color: device.isAlive ? AppUi.borderStrong : AppUi.border),
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular($(10)),
-                      ),
-                      width: $(48),
-                      height: $(48),
-                      child: Center(
-                        child: child,
+                    UiStatusDot(online: device.isAlive),
+                    const SizedBox(width: 6),
+                    Text(
+                      device.deviceName ?? uiDeviceLabel(device.deviceType),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: device.isAlive ? AppUi.text : AppUi.textSecondary,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
+              );
+            },
           ),
-        ),
-        SizedBox(
-          height: $(12),
-        ),
-      ],
+        );
+      },
     );
   }
 }

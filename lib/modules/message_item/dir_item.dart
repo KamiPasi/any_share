@@ -13,6 +13,8 @@ import 'package:speed_share/controllers/controllers.dart';
 import 'package:speed_share/services/chat_service.dart';
 import 'package:speed_share/generated/l10n.dart';
 import 'package:speed_share/models/models.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
 
 class DirMessageItem extends StatefulWidget {
   const DirMessageItem({
@@ -106,6 +108,39 @@ class _DirMessageItemState extends State<DirMessageItem> {
     super.dispose();
   }
 
+  Future<void> startDownload(String? urlPrifix) async {
+    if (GetPlatform.isDesktop) {
+      const confirmButtonText = 'Choose';
+      final dir = await getDirectoryPath(
+        confirmButtonText: confirmButtonText,
+      );
+      if (dir == null) {
+        return;
+      }
+      downloadFile(urlPrifix, dir);
+    } else {
+      Directory dataDir = Directory('/sdcard/SpeedShare');
+      if (!dataDir.existsSync()) {
+        dataDir.createSync();
+      }
+      downloadFile(urlPrifix, '/sdcard/SpeedShare/文件夹');
+    }
+  }
+
+  String statusText() {
+    final String total = FileUtil.formatBytes(widget.info!.fullSize ?? 0);
+    if (widget.sendByUser! || GetPlatform.isWeb) {
+      return '文件夹 · $total';
+    }
+    if (fileDownratio >= 1.0) {
+      return '已下载 · $total';
+    }
+    if (fileDownratio > 0) {
+      return '${FileUtil.formatBytes(count)} / $total · $speed/s';
+    }
+    return '文件夹 · $total';
+  }
+
   @override
   Widget build(BuildContext context) {
     String? urlPrifix;
@@ -115,176 +150,92 @@ class _DirMessageItemState extends State<DirMessageItem> {
       urlPrifix = info!.urlPrifix;
     }
     Log.v('urlPrifix -> $urlPrifix');
+    final bool mine = widget.sendByUser!;
+    final bool downloading = !mine && !GetPlatform.isWeb && fileDownratio > 0 && fileDownratio < 1.0;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisAlignment: widget.sendByUser! ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-          ),
+        Flexible(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: $(200)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: SvgPicture.asset(
-                        SvgAssets.dir,
-                        width: $(32),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        widget.info!.dirName!,
-                        style: TextStyle(
-                          color: Colors.black,
-                          // fontWeight: FontWeight.bold,
-                          fontSize: $(16),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (!widget.sendByUser! && !GetPlatform.isWeb)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+            constraints: const BoxConstraints(maxWidth: 340),
+            child: UiBubble(
+              sendByUser: mine,
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
                     children: [
-                      SizedBox(
-                        height: $(8),
-                      ),
-                      ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(25.0)),
-                        child: LinearProgressIndicator(
-                          backgroundColor: Colors.black12,
-                          valueColor: AlwaysStoppedAnimation(
-                            fileDownratio == 1.0 ? Colors.blue : Colors.red,
-                          ),
-                          value: fileDownratio,
+                      UiFileBadge(
+                        highlighted: mine,
+                        child: SvgPicture.asset(
+                          SvgAssets.dir,
+                          width: 36,
+                          height: 36,
                         ),
                       ),
-                      SizedBox(
-                        height: $(4),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Builder(
-                            builder: (_) {
-                              if (fileDownratio == 1.0) {
-                                return Icon(
-                                  Icons.check,
-                                  size: $(16),
-                                  color: Colors.green,
-                                );
-                              }
-                              return Text(
-                                '$speed/s',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: $(12),
-                                ),
-                              );
-                            },
-                          ),
-                          Row(
-                            children: [
-                              SizedBox(
-                                child: Text(
-                                  FileUtil.formatBytes(count),
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: $(12),
-                                  ),
-                                ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.info!.dirName!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppUi.text, height: 1.35),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              statusText(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: !mine && fileDownratio >= 1.0 ? AppUi.onlineText : AppUi.textSecondary,
                               ),
-                              Text(
-                                '/',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: $(12),
-                                ),
-                              ),
-                              Builder(
-                                builder: (context) {
-                                  return Text(
-                                    FileUtil.formatBytes(widget.info!.fullSize!),
-                                    style: TextStyle(
-                                      color: Colors.black54,
-                                      fontSize: $(12),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-              ],
+                  if (downloading)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: fileDownratio,
+                          minHeight: 4,
+                          backgroundColor: AppUi.segment,
+                          color: AppUi.accent,
+                        ),
+                      ),
+                    ),
+                  // 别的设备发来的文件夹才有下载按钮
+                  if (!mine) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        UiButton(
+                          label: '下载',
+                          icon: Icons.download_rounded,
+                          variant: UiButtonVariant.soft,
+                          dense: true,
+                          height: 34,
+                          onPressed: () => startDownload(urlPrifix),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
-        if (!widget.sendByUser!)
-          Material(
-            color: Colors.transparent,
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () async {
-                    // if (GetPlatform.isWeb) {
-                    //   Log.e('web download');
-                    //   await canLaunch(url)
-                    //       ? await launch(url + '?download=true')
-                    //       : throw 'Could not launch $url';
-                    //   return;
-                    // }
-                    if (GetPlatform.isDesktop) {
-                      const confirmButtonText = 'Choose';
-                      final dir = await getDirectoryPath(
-                        confirmButtonText: confirmButtonText,
-                      );
-                      if (dir == null) {
-                        return;
-                      }
-                      downloadFile(urlPrifix, dir);
-                    } else {
-                      Directory dataDir = Directory('/sdcard/SpeedShare');
-                      if (!dataDir.existsSync()) {
-                        dataDir.createSync();
-                      }
-                      downloadFile(urlPrifix, '/sdcard/SpeedShare/文件夹');
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.file_download,
-                      size: $(18),
-                    ),
-                  ),
-                ),
-                InkWell(
-                  onTap: () async {},
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.content_copy,
-                      size: $(18),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
       ],
     );
   }

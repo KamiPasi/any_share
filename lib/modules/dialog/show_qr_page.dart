@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:global_repository/global_repository.dart';
 
 import 'package:speed_share/generated/l10n.dart';
+import 'package:speed_share/services/services.dart';
+import 'package:speed_share/themes/app_ui.dart';
+import 'package:speed_share/utils/lan_address.dart';
+import 'package:speed_share/widgets/ui_kit.dart';
 
 // 展示二维码的弹窗
 class ShowQRPage extends StatefulWidget {
@@ -14,75 +17,127 @@ class ShowQRPage extends StatefulWidget {
 }
 
 class _ShowQRPageState extends State<ShowQRPage> {
-  List<String> address = [];
+  List<LanAddress> addresses = [];
+  int selected = 0;
+  bool loaded = false;
+
   @override
   void initState() {
     super.initState();
-    PlatformUtil.localAddress().then((value) {
-      address = value;
-      setState(() {});
+    lanAddresses().then((value) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        addresses = value;
+        loaded = true;
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.all($(40)),
-      child: Center(
-        child: Material(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular($(10)),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
           child: Material(
-            color: Colors.transparent,
-            child: Container(
-              height: $(360),
-              width: $(300),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular($(10)),
-                color: Theme.of(context).colorScheme.surface,
-              ),
+            color: AppUi.surface,
+            borderRadius: BorderRadius.circular(20),
+            clipBehavior: Clip.antiAlias,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 16, 16, 24),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: PageView.builder(
-                      itemCount: address.length,
-                      itemBuilder: (c, i) {
-                        Log.i('http://${address[i]}:${widget.port}');
-                        return Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all($(10)),
-                              child: QrImageView(
-                                data: 'http://${address[i]}:${widget.port}',
-                                version: QrVersions.auto,
-                                size: $(280),
-                                eyeStyle: const QrEyeStyle(
-                                  eyeShape: QrEyeShape.square,
-                                  color: Colors.black,
-                                  // borderRadius: 10,
-                                ),
-                                dataModuleStyle: const QrDataModuleStyle(
-                                  dataModuleShape: QrDataModuleShape.square,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                            SelectableText(
-                              'http://${address[i]}:${widget.port}',
-                            ),
-                          ],
-                        );
-                      },
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '扫码连接这台设备',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppUi.text),
+                        ),
+                      ),
+                      UiIconButton(
+                        icon: Icons.close_rounded,
+                        tooltip: l10n.close,
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          '用速享 App 的扫一扫，或者手机相机扫码后在浏览器里打开。',
+                          style: TextStyle(fontSize: 13, color: AppUi.textSecondary, height: 1.5),
+                        ),
+                        const SizedBox(height: 16),
+                        content(),
+                      ],
                     ),
                   ),
-                  Text(l10n.qrTips),
-                  SizedBox(height: $(10)),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget content() {
+    if (!loaded) {
+      return const SizedBox(
+        height: 260,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (addresses.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Text(
+          '没有找到局域网地址，先连上 Wi-Fi 或网线再试。',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14, color: AppUi.textSecondary),
+        ),
+      );
+    }
+    final String url = addresses[selected].url(widget.port ?? ChatService.port);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (addresses.length > 1) ...[
+          UiAddressSelector(
+            addresses: addresses,
+            selected: selected,
+            onChanged: (i) => setState(() => selected = i),
+          ),
+          const SizedBox(height: 16),
+        ],
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AppUi.border),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: QrImageView(
+              data: url,
+              size: 220,
+              padding: EdgeInsets.zero,
+              backgroundColor: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        UiCopyField(text: url),
+      ],
     );
   }
 }
