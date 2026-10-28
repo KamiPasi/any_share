@@ -72,12 +72,22 @@ class MessageBaseInfo {
   }
 }
 
-class DeviceTypeConverter implements JsonConverter<DeviceType?, String?> {
+/// 设备类型按枚举名传输。旧版协议（包括内置的网页端）传的是整数，
+/// 对应旧版 lib/global/constant.dart 里的 phone = 0、desktop = 1、web = 2
+class DeviceTypeConverter implements JsonConverter<DeviceType?, Object?> {
   const DeviceTypeConverter();
 
   @override
-  DeviceType? fromJson(String? json) {
+  DeviceType? fromJson(Object? json) {
     if (json == null) return null;
+    if (json is int) {
+      return switch (json) {
+        0 => DeviceType.android,
+        1 => DeviceType.windows,
+        2 => DeviceType.browser,
+        _ => DeviceType.unknown,
+      };
+    }
 
     return DeviceType.values.firstWhere(
       (e) => e.name == json,

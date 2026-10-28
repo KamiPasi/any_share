@@ -11,7 +11,7 @@ MessageBaseInfo _$MessageBaseInfoFromJson(Map<String, dynamic> json) =>
       msgType: json['msgType'] as String?,
       deviceName: json['deviceName'] as String? ?? '',
       deviceType: const DeviceTypeConverter().fromJson(
-        json['deviceType'] as String?,
+        json['deviceType'],
       ),
       deviceId: json['deviceId'] as String?,
     );

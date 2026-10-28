@@ -20,7 +20,7 @@ FileMessage _$FileMessageFromJson(Map<String, dynamic> json) =>
       )
       ..deviceId = json['deviceId'] as String?
       ..deviceType = const DeviceTypeConverter().fromJson(
-        json['deviceType'] as String?,
+        json['deviceType'],
       )
       ..url = json['url'] as String?;
 

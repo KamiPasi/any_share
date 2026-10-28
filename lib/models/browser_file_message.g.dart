@@ -15,7 +15,7 @@ BrowserFileMessage _$BrowserFileMessageFromJson(Map<String, dynamic> json) =>
       deviceName: json['deviceName'] as String? ?? '',
       deviceId: json['deviceId'] as String?,
       deviceType: const DeviceTypeConverter().fromJson(
-        json['deviceType'] as String?,
+        json['deviceType'],
       ),
       msgType: json['msgType'] as String? ?? 'webfile',
     );

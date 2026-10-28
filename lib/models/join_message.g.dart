@@ -11,7 +11,7 @@ JoinMessage _$JoinMessageFromJson(Map<String, dynamic> json) =>
       ..deviceName = json['deviceName'] as String?
       ..deviceId = json['deviceId'] as String?
       ..deviceType = const DeviceTypeConverter().fromJson(
-        json['deviceType'] as String?,
+        json['deviceType'],
       )
       ..addrs = (json['addrs'] as List<dynamic>?)
           ?.map((e) => e as String?)

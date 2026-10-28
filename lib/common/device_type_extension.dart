@@ -33,7 +33,8 @@ extension DeviceTypeExt on DeviceType {
       case DeviceType.browser:
         return Color(TailwindColor.pink700.value);
       default:
-        throw UnimplementedError('Unknown device type: $this');
+        // 识别不了的设备类型（比如旧版协议里的其他编号）也要能显示消息
+        return Color(TailwindColor.green700.value);
     }
   }
 }

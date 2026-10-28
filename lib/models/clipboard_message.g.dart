@@ -14,7 +14,7 @@ ClipboardMessage _$ClipboardMessageFromJson(Map<String, dynamic> json) =>
       )
       ..deviceId = json['deviceId'] as String?
       ..deviceType = const DeviceTypeConverter().fromJson(
-        json['deviceType'] as String?,
+        json['deviceType'],
       );
 
 Map<String, dynamic> _$ClipboardMessageToJson(ClipboardMessage instance) => <String, dynamic>{

@@ -19,7 +19,7 @@ DirMessage _$DirMessageFromJson(Map<String, dynamic> json) => DirMessage(
   deviceName: json['deviceName'] as String? ?? '',
   deviceId: json['deviceId'] as String?,
   deviceType: const DeviceTypeConverter().fromJson(
-    json['deviceType'] as String?,
+    json['deviceType'],
   ),
   msgType: json['msgType'] as String? ?? 'dir',
 )..url = json['url'] as String?;
@@ -49,7 +49,7 @@ DirPartMessage _$DirPartMessageFromJson(Map<String, dynamic> json) =>
       deviceName: json['deviceName'] as String? ?? '',
       deviceId: json['deviceId'] as String?,
       deviceType: const DeviceTypeConverter().fromJson(
-        json['deviceType'] as String?,
+        json['deviceType'],
       ),
       msgType: json['msgType'] as String? ?? 'dirPart',
     );
