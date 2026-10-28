@@ -1,0 +1,23 @@
+name: file_manager
+description: >-
+  速享文件管理模块的开源实现：本地文件浏览、应用内选择文件和文件夹，
+  以及浏览器远程管理文件用的 HTTP 接口。用来替换作者未公开的同名私有包。
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get: any
+  mime: any
+  open_file: any
+  path: any
+  shelf: any
+  shelf_router: any
+
+flutter:
+  assets:
+    - assets/icon/

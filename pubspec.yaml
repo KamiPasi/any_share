@@ -60,8 +60,9 @@ dependencies:
   # device find
   multicast:
     git: https://github.com/nightmare-space/multicast
+  # nightmare-space/file_manager 是私有仓库，换成仓库内的开源实现
   file_manager:
-    git: https://github.com/nightmare-space/file_manager.git
+    path: third_party/file_manager
   settings:
     git: https://github.com/nightmare-space/settings
   speed_share_extension:
