@@ -29,6 +29,7 @@ import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.Objects;
+import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.android.FlutterSurfaceView;
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.MethodCall;
