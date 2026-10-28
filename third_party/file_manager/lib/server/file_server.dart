@@ -40,12 +40,29 @@ class Server {
 
   static Router _createRouter() {
     return Router()
+      ..all('/<ignored|.*>', _rejectCrossSite)
       ..get('/getdir', _getDir)
       ..get('/rename', _rename)
       ..get('/delete', _delete)
       ..get('/mkdir', _mkdir)
       ..post('/upload', _upload)
       ..all('/<ignored|.*>', _serve);
+  }
+
+  /// 拒绝其他网站发起的请求，其余请求交给后面的路由。
+  ///
+  /// 速享的消息服务给所有响应都加了 `Access-Control-Allow-Origin: *`，删除、重命名又是 GET 请求，
+  /// 不拦的话，用户在浏览器里打开的任何网站都能读取、删除这台设备上的文件。
+  /// 目录页面发的是同源请求，在地址栏直接打开时 `Sec-Fetch-Site` 是 `none`，
+  /// 速享客户端不带这些请求头，都不受影响。
+  static Response _rejectCrossSite(Request request, String ignored) {
+    final site = request.headers['sec-fetch-site'];
+    // 不支持 Sec-Fetch-Site 的老浏览器，跨源的 fetch 和 XHR 仍然会带 Origin
+    final origin = request.headers['origin'];
+    final crossSite = site != null
+        ? site == 'cross-site'
+        : origin != null && Uri.tryParse(origin)?.authority != request.headers['host'];
+    return crossSite ? Response.forbidden('Cross-site request rejected') : Router.routeNotFound;
   }
 
   /// `GET /getdir?path=/sdcard/Download`：返回 JSON 字符串数组，格式见 [Storage.listing]。
