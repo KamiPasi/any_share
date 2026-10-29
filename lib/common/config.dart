@@ -1,3 +1,5 @@
+import 'package:package_info_plus/package_info_plus.dart';
+
 class Config {
   Config._();
   // 下面两个端口是单个文件部署用到的端口
@@ -17,4 +19,16 @@ class Config {
 
   static String versionName = const String.fromEnvironment('VERSION');
   static String versionCode = const String.fromEnvironment('VERSION_CODE');
+
+  // CI 编译时没有传 --dart-define=VERSION，这时从安装包里读 pubspec.yaml 写的版本号
+  static Future<void> initVersion() async {
+    if (versionName.isNotEmpty) {
+      return;
+    }
+    try {
+      final PackageInfo info = await PackageInfo.fromPlatform();
+      versionName = info.version;
+      versionCode = info.buildNumber;
+    } catch (_) {}
+  }
 }

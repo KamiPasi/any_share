@@ -62,6 +62,7 @@ Future<void> main() async {
       );
       if (!GetPlatform.isWeb) {
         await initSetting();
+        await Config.initVersion();
       }
       Get.put(SettingController());
       Get.put(LanAddressController());

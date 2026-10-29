@@ -53,6 +53,8 @@ dependencies:
   responsive_framework: ^1.0.0
   path_provider: ^2.0.10
   device_info_plus: ^10.1.0
+  # app version for the about page
+  package_info_plus: ^9.0.1
   json_annotation: ^4.8.1
   web: ^1.1.1
 
